@@ -27,6 +27,7 @@
 * check again the options
 * improve readability
 * test sync dev
+* include git
 """
 
 import pexpect, sys, getpass, re, datetime, os
