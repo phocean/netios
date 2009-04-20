@@ -26,6 +26,7 @@
 * write the doc !
 * check again the options
 * improve readability
+* test sync dev
 """
 
 import pexpect, sys, getpass, re, datetime, os
