@@ -26,6 +26,7 @@
 * write the doc !
 * check again the options
 * improve readability
+* include git
 """
 
 import pexpect, sys, getpass, re, datetime, os
