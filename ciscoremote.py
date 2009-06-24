@@ -214,8 +214,7 @@ class ciscoSsh(sshConn):
 			self.error ('keyboard')
 	
 	def show_username(self):
-		try:
-			
+		try:	
 			self.ssh.sendline ("show run | include username")
 			self.ssh.expect ("$.*"+self.prompt)
 			res=self.ssh.before
@@ -335,7 +334,8 @@ def new_ena():
 #===============================================================================
 def connect (host,user,sshpass,enapass, log, startTime,verb):
 	log.write ("%s* Trying to connect to %s\n"%(time(1),host))
-	print ">>> Connecting to %s..."%host
+	if verb:
+		print ">>> Connecting to %s..."%host
 	cisco = ciscoSsh(host, user, sshpass,ciscoprompt,enapass,log,startTime)
 	ret = cisco.login(verb)
 	if ret != 0 :
@@ -388,7 +388,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	else:
 		log.write ("%sOperation changing password skipped : simulation mode\n"%time(1))
 		if verb == True:
-			print ">>> Operation changing password skipped : simulation mode"
+			print "!!! Operation changing password skipped : simulation mode"
 	log.write ("%sSSH password successfully changed\n"%time(1))
 	if verb == True:
 		print ">>> Password successfully changed"
@@ -401,7 +401,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	else:
 		log.write ("%sOperation changing enable password skipped : simulation mode\n"%time(1))
 		if verb == True:
-			print ">>> Operation changing enable password skipped : simulation mode"
+			print "!!! Operation changing enable password skipped : simulation mode"
 	log.write ("%sEnable password successfully changed\n"%time(1))
 	if verb == True:
 		print ">>> Enable password successfully changed"
@@ -418,6 +418,8 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	log.write ("%s* Initial connection to %s closed\n"%(time(1),host))
 	#time.sleep(3)
 	# validation of new credentials (simuler connexion)
+	if verb == True:
+			print ("... Checking new credentials")
 	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb)
 	if isinstance(cisco,ciscoSsh) != True:
 		if verb == True:
@@ -435,7 +437,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	else :
 		log.write ("%sSSH connection closed\n"%time(1))
 		if verb:
-			print ">>> SSH connection closed"
+			print ">>> New credentials working well : SSH connection closed"
 	# deletion of extra accounts
 	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb)
 	if isinstance(cisco,ciscoSsh) != True:
@@ -494,7 +496,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	else :
 		log.write ("%sSSH connection closed\n"%time(1))
 		if verb:
-			print ">>> SSH connection closed"
+			print ">>> SSH Test connection closed"
 	ret = cisco.ssh_close(0)
 	if ret != 0 :
 		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
@@ -554,7 +556,7 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim):
 # Put down the program options
 #===============================================================================
 def process_args(): 
-    parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.1")
+    parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.15")
     parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
     parser.add_option("-f", "--hostfile", action="store", dest="file", help="Remote hosts file.")
     parser.add_option("-c","--commands", action="store", dest="commandfile", help="Commands file")
@@ -624,7 +626,7 @@ def userlist(host,user,sshpass,enapass,log, startTime,verb):
 			flist.write (";%s"%user)
 		flist.write ("\n")
 	else :
-		print "## Empty string returned !"
+		print "### Empty string returned !"
 		log.write ("%sEmpty string returned instead of username list\n"%time(1))
 		return 1
 	log.write ("%sRetrieved successfully an user list\n"%time(1))
@@ -653,6 +655,7 @@ def main():
 		verb = False
 	if opts.simu == True:
 		sim = True
+		verb = True
 	else:
 		sim = False
 	if opts.commandfile is not None:
@@ -673,16 +676,17 @@ def main():
 		for host in hostfile:
 			if host and host[-1] == '\n':
 				host = host[:-1]
+			print ">>> Working on host %s"%host
 			ret = changepass(host,user,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
 			if ret != 0:
 				log.write ("%sSkip %s\n"%(time(1),host))
 				error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
 				error.write ("%s"%host)
-				print "## Skip %s"%host
+				print "### Skip %s"%host
 				next
 		hostfile.close()
-		print "## All hosts parsed"
-		log.write ("%s## All host parsed ##\n"%time(1))
+		print "### All hosts parsed"
+		log.write ("%s### All host parsed ##\n"%time(1))
 	# applying commands from the file to the hosts in args
 	elif opts.commandfile is not None and len(sys.argv) > 1:
 		#arguments + commandes
@@ -690,15 +694,16 @@ def main():
 		for host in hosts:
 			if host and host[-1] == '\n':
 				host = host[:-1]
+			print ">>> Working on host %s"%host
 			ret = custom(host,user,sshpass,enapass,opts.commandfile,log,startTime,verb,sim)
 			if ret != 0:
 				log.write ("%sSkip %s\n"%(time(1),host))
 				error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
 				error.write ("%s"%host)
-				print "## Skip %s"%host
+				print "### Skip %s"%host
 				next
-			print "## All hosts parsed"
-			log.write ("%s## All host parsed ##\n"%time(1))
+			print "### All hosts parsed"
+			log.write ("%s### All host parsed ##\n"%time(1))
 	# changing password for hosts in the file
 	elif opts.file is not None:
 		try:
@@ -711,14 +716,14 @@ def main():
 			for host in hostfile:
 				if host and host[-1] == '\n':
 					host = host[:-1]
+				print ">>> host %s"%host
 				ret=userlist(host,user,sshpass,enapass,log,startTime,verb)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
 					error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
 					error.write ("%s"%host)
-					print "## Skip %s"%host
+					print "### Skip %s"%host
 					next
-			print "## All hosts parsed"
 		elif opts.showusr is None:
 			if opts.newusr:
 				if sim:
@@ -730,16 +735,17 @@ def main():
 			for host in hostfile:
 				if host and host[-1] == '\n':
 					host = host[:-1]
+				print ">>> Working on host %s"%host
 				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
 					error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
 					error.write ("%s"%host)
-					print "## Skip %s"%host
+					print "### Skip %s"%host
 					next
 		hostfile.close()
-		print "## All hosts parsed"
-		log.write ("%s## All host parsed ##\n"%time(1))
+		print "### All hosts parsed"
+		log.write ("%s### All host parsed ##\n"%time(1))
 	# changing password for hosts in args
 	else:
 		if len(sys.argv) <= 1:
@@ -749,15 +755,18 @@ def main():
 		if opts.showusr:
 			(user,sshpass,enapass)=credentials()
 			for host in hosts:
+				if host and host[-1] == '\n':
+					host = host[:-1]
+				print ">>> host %s"%host
 				ret=userlist(host,user,sshpass,enapass,log,startTime,verb)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
 					error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
 					error.write ("%s"%host)
-					print "## Skip %s"%host
+					print "### Skip %s"%host
 					next
-			print "## All hosts parsed : check out the './out' folder for user list"
-			log.write ("%s## All host parsed ##\n"%time(1))
+			print "### All hosts parsed : check out the './out' folder for user list"
+			log.write ("%s### All host parsed ##\n"%time(1))
 		elif opts.showusr is None:
 			if opts.newusr:
 				(newuser,user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain_new(log)
@@ -767,15 +776,18 @@ def main():
 				(user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain(log)
 				newuser=user
 			for host in hosts:
+				if host and host[-1] == '\n':
+					host = host[:-1]
+				print ">>> Working on host %s"%host
 				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
 					error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
 					error.write ("%s"%host)
-					print "## Skip %s"%host
+					print "### Skip %s"%host
 					next
-			print "## All hosts parsed"
-			log.write ("%s## All host parsed ##\n"%time(1))
+			print "### All hosts parsed"
+			log.write ("%s### All host parsed ##\n"%time(1))
 	log.close()
 	sys.exit()
 

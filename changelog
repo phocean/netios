@@ -1,12 +1,18 @@
+2009-06-24  (0.15) Jean-Christophe Baptiste <jc@phocean.net>
+
+  ∗ ciscoremote.py : better check method of the return value from the connect function (isinstance)
+  ∗ ciscoremote.py : simulation mode implies verbose
+  ∗ ciscoremote.py : minor cosmetic changes
+
 2009-05-20  (0.1) Jean-Christophe Baptiste <jc@phocean.net>
 
   ∗ changelog : create this file
 
 """ TO DO
 * multiprocessing
+* gestion fichier mots de passe
 * write the doc !
 * check again the options
 * improve readability
 * test sync dev
-* include git
 """
