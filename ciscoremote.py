@@ -21,15 +21,6 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #===============================================================================
 
-""" TO DO
-* multiprocessing
-* write the doc !
-* check again the options
-* improve readability
-* test sync dev
-* include git
-"""
-
 import pexpect, sys, getpass, re, datetime, os
 from optparse import OptionParser
 
@@ -381,8 +372,10 @@ def confter(cisco,log,verb):
 #===============================================================================
 def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,startTime,verb,sim):
 	cisco=connect(host, user, sshpass, enapass, log, startTime,verb)
-	if cisco == 1 :
-	   return 1
+	if isinstance(cisco,ciscoSsh) != True:
+		if verb == True:
+			print ("### Could not retrieve an object")
+		return 1
 	cisco=confter(cisco,log,verb)
 	if verb == True:
 		print ">>> Changing passwords"
@@ -426,7 +419,9 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	#time.sleep(3)
 	# validation of new credentials (simuler connexion)
 	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb)
-	if cisco == 1 :
+	if isinstance(cisco,ciscoSsh) != True:
+		if verb == True:
+			print ("### Could not retrieve an object")
 		#print ("%s"%sshpassNew)
 		# new user log in failed : stop here, don't delete any account
 		log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%time(1),host)
@@ -443,8 +438,10 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 			print ">>> SSH connection closed"
 	# deletion of extra accounts
 	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb)
-	if cisco == 1 :
-		print ("%s"%sshpassNew)
+	if isinstance(cisco,ciscoSsh) != True:
+		if verb == True:
+			print ("### Could not retrieve an object")
+		#print ("Password %s"%sshpassNew)
 		# new user log in failed : stop here, don't delete any account
 		log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%(time(1),host))
 		print "## Failed do log-in with new credentials - stopping here for this host"
@@ -514,7 +511,9 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 #===============================================================================
 def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim):
 	cisco=connect(host, user, sshpass, enapass, log, startTime,verb)
-	if cisco == 1:
+	if isinstance(cisco,ciscoSsh) != True:
+		if verb == True:
+			print ("### Could not retrieve an object")
 		return 1
 	cisco=confter(cisco,log,verb)
 	try:
@@ -555,7 +554,7 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim):
 # Put down the program options
 #===============================================================================
 def process_args(): 
-    parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 1.0")
+    parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.1")
     parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
     parser.add_option("-f", "--hostfile", action="store", dest="file", help="Remote hosts file.")
     parser.add_option("-c","--commands", action="store", dest="commandfile", help="Commands file")
@@ -606,6 +605,10 @@ def credential_chain_new(log):
 
 def userlist(host,user,sshpass,enapass,log, startTime,verb):
 	cisco=connect(host,user,sshpass,enapass, log, startTime,verb)
+	if isinstance(cisco,ciscoSsh) != True:
+		if verb == True:
+			print ("### Could not retrieve an object")
+		return 1
 	userlist = cisco.show_username()
 	if os.path.exists('out') == False:
 	   os.mkdir('out')
@@ -617,8 +620,7 @@ def userlist(host,user,sshpass,enapass,log, startTime,verb):
 		flist = open ("out/%s/users.log"%startTime,"a")
 		flist.write ("%s"%host)
 		for user in userlist:
-			if verb == True:
-				print "%s"%user
+			print "%s"%user
 			flist.write (";%s"%user)
 		flist.write ("\n")
 	else :

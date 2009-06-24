@@ -1,0 +1,12 @@
+2009-05-20  (0.1) Jean-Christophe Baptiste <jc@phocean.net>
+
+  ∗ changelog : create this file
+
+""" TO DO
+* multiprocessing
+* write the doc !
+* check again the options
+* improve readability
+* test sync dev
+* include git
+"""
