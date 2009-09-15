@@ -1,3 +1,13 @@
+2009-09-15  (0.17) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : class SshConn : handle logging when there are multiple concurrent connections
+ * ciscoremote.py : add comments / improve readability of the code
+
+2009-09-01  (0.16) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : changepass() : fix a wrong number of argument in log.write operation
+ * ciscoremote.py : cisco_ssh object / ena_change attribute : now handles the case where the user is directly logged in enable mode (depends on the aaa configuration, tacacs, etc.)
+
 2009-06-24  (0.15) Jean-Christophe Baptiste <jc@phocean.net>
 
   ∗ ciscoremote.py : better check method of the return value from the connect function (isinstance)
@@ -15,4 +25,7 @@
 * check again the options
 * improve readability
 * test sync dev
+* forgot to manage no host issue
+* no enable pass mode
+* hide passwords in log files
 """
