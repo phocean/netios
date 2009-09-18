@@ -33,7 +33,7 @@ ciscoprompt = "\$|\%|\#|\>"
 
 class sshConn:
 	
-	def __init__ (self,host,user,password,prompt,log,startTime):
+	def __init__ (self,host,user,password,prompt,log,startTime,logincount):
 		self.host=host
 		self.user=user
 		self.password=password
@@ -41,7 +41,7 @@ class sshConn:
 		self.startTime=startTime
 		self.log=log
 		self.ssh=None
-		self.logincount=0
+		self.logincount=logincount
 
 # --- print error messages
 	def error (self,type):
@@ -79,7 +79,7 @@ class sshConn:
 			else:
 				fout = file ("log/%s/%s-%s.log"%(self.startTime,time(0),self.host),"w")
 			self.ssh.logfile = fout
-			self.logincount ++
+			print self.logincount
 			i = self.ssh.expect (["assword:", r"yes/no"],timeout=7)
 	# --- prompted for password
 			if i==0:
@@ -156,21 +156,35 @@ class sshConn:
 					
 class ciscoSsh(sshConn):
 	
-	def __init__(self,host,user,password,prompt,enapass,log,startTime):
-		sshConn.__init__(self, host, user, password, prompt,log,startTime)
+	def __init__(self,host,user,password,prompt,enapass,log,startTime,logincount):
+		sshConn.__init__(self, host, user, password, prompt,log,startTime,logincount)
 		self.enapass=enapass
 
 # --- enable mode	
 	def ena (self):
+		self.ssh.sendline ('enable')
 		try:
-			self.ssh.sendline ('enable')
-			i = self.ssh.expect(r'assword', timeout=2)
-			if i == 0:
+			i = self.ssh.expect(r'assword')
+			if i != 0:
+				#print "already tacacs"
 		# --- already in enable mode (ex : tacacs)
 		# --- if self.ssh.expect(['>','#'], timeout=2) == 1:
+				#return 0
+				print "prompt problem"
+		except pexpect.TIMEOUT:
+			i = self.ssh.expect(self.prompt)
+			if i == 0:
+				print "already tacacs"
 				return 0
-			self.ssh.sendline (self.enapass)
-			i = self.ssh.expect(['>','#'], timeout=2)
+			else:
+				self.error(timeout)
+		except pexpect.EOF:
+			self.error ('eof')
+		except KeyboardInterrupt:
+			self.error ('keyboard')
+		self.ssh.sendline (self.enapass)
+		try:
+			i = self.ssh.expect(['>','#'])
 			if i == 0:
 		# --- error, could not enter enable mode
 				return (self.error('ena'))
@@ -393,12 +407,12 @@ def new_ena():
 #===============================================================================
 # Just call the appropriate object attribute and gives some feedback to the user
 #===============================================================================
-def connect (host,user,sshpass,enapass, log, startTime,verb):
+def connect (host,user,sshpass,enapass, log, startTime,verb,logincount):
 	log.write ("%s* Trying to connect to %s\n"%(time(1),host))
 	if verb:
 		print ">>> Connecting to %s..."%host
 # --- create the cisco object
-	cisco = ciscoSsh(host, user, sshpass,ciscoprompt,enapass,log,startTime)
+	cisco = ciscoSsh(host, user, sshpass,ciscoprompt,enapass,log,startTime,logincount)
 # --- logging
 	ret = cisco.login(verb)
 # --- connection failed
@@ -438,8 +452,9 @@ def confter(cisco,log,verb):
 # manually correct the problem (and keep a ssh connection up
 #===============================================================================
 def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,startTime,verb,sim):
+	logincount = 0 # login ID for concurrent ssh session
 # --- call to connect function
-	cisco=connect(host, user, sshpass, enapass, log, startTime,verb)
+	cisco=connect(host, user, sshpass, enapass, log, startTime,verb, logincount)
 # --- if cisco is an object, the connection process was successful
 	if isinstance(cisco,ciscoSsh) != True:
 		if verb == True:
@@ -495,7 +510,8 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	if verb == True:
 			print ("... Checking new credentials")
 # --- try to connect with the new password
-	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb)
+	logincount = logincount + 1
+	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb, logincount)
 # --- test if connection was successful
 	if isinstance(cisco,ciscoSsh) != True:
 		if verb == True:
@@ -515,7 +531,8 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		if verb:
 			print ">>> New credentials working well : SSH connection closed"
 # --- delete extra accounts
-	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb)
+	logincount = logincount + 1
+	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb, logincount)
 	if isinstance(cisco,ciscoSsh) != True:
 		if verb == True:
 			print ("### Could not retrieve an object")
@@ -592,7 +609,8 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 #===============================================================================
 def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim):
 # --- open the connection
-	cisco=connect(host, user, sshpass, enapass, log, startTime,verb)
+	logincount = 0
+	cisco=connect(host, user, sshpass, enapass, log, startTime,verb, logincount)
 	if isinstance(cisco,ciscoSsh) != True:
 		if verb == True:
 			print ("### Could not retrieve an object")
@@ -694,7 +712,8 @@ def credential_chain_new(log):
 
 def userlist(host,user,sshpass,enapass,log, startTime,verb):
 # --- open a connection
-	cisco=connect(host,user,sshpass,enapass, log, startTime,verb)
+	logincount = 0
+	cisco=connect(host,user,sshpass,enapass, log, startTime,verb, logincount)
 	if isinstance(cisco,ciscoSsh) != True:
 		if verb == True:
 			print ("### Could not retrieve an object")
@@ -728,7 +747,8 @@ def userlist(host,user,sshpass,enapass,log, startTime,verb):
 # show run and print it to stdout
 #===============================================================================		
 def show_run(host,user,sshpass, enapass, log, startTime, verb):
-	cisco=connect(host,user,sshpass,enapass, log, startTime,verb)
+	logincount = 0
+	cisco=connect(host,user,sshpass,enapass, log, startTime,verb, logincount)
 	if isinstance(cisco,ciscoSsh) != True:
 		if verb == True:
 			print ("### Could not retrieve an object")
