@@ -29,3 +29,19 @@
 * no enable pass mode
 * hide passwords in log files
 """
+
+Know issues :
+
+## OUPS ! Something got smelly : I could not log-in back. I am afraid that I deleted the valid user. Please check it manually in the session below :
+channel 1: open failed: resource shortage: 
+
+106 : wrong username
+117 : interactive
+self.error(ena) et self.error(unexp_ena) : necessary ?
+245 : error not catched
+266 : return user lines (stat)
+275 : show run to extend
+522 : comment
+630 : errors
+861 : comment
+615+ : compact error code

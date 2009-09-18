@@ -164,13 +164,9 @@ class ciscoSsh(sshConn):
 	def ena (self):
 		self.ssh.sendline ('enable')
 		try:
-			i = self.ssh.expect(r'assword')
-			if i != 0:
-				#print "already tacacs"
+			self.ssh.expect(r'assword')
 		# --- already in enable mode (ex : tacacs)
 		# --- if self.ssh.expect(['>','#'], timeout=2) == 1:
-				#return 0
-				print "prompt problem"
 		except pexpect.TIMEOUT:
 			i = self.ssh.expect(self.prompt)
 			if i == 0:
@@ -184,24 +180,23 @@ class ciscoSsh(sshConn):
 			self.error ('keyboard')
 		self.ssh.sendline (self.enapass)
 		try:
-			i = self.ssh.expect(['>','#'])
-			if i == 0:
-		# --- error, could not enter enable mode
-				return (self.error('ena'))
-			elif i == 1:
-		# --- OK
-				self.ssh.sendline ('terminal length 0')
-				self.ssh.expect(self.prompt)
-				return 0
-			else:
-		# --- handle unexpected error
-				return (self.error('unexp_ena'))
+			self.ssh.expect(['>','#'])
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
 		except pexpect.EOF:
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
+		self.ssh.sendline ('terminal length 0')
+		try:
+			self.ssh.expect(self.prompt)
+		except pexpect.TIMEOUT:
+			self.error ('timeout')
+		except pexpect.EOF:
+			self.error ('eof')
+		except KeyboardInterrupt:
+			self.error ('keyboard')
+		return 0
 
 # --- configure terminal mode
 	def conft (self):
@@ -218,10 +213,35 @@ class ciscoSsh(sshConn):
 
 # --- change user password
 	def ssh_change(self,newuser,password):
+		self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
 		try:
-			self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
-			self.ssh.expect (self.prompt)
-			return 0
+			i = self.ssh.expect ([self.prompt,"ERROR: Can not have both a user password and a user secret"])
+			if i == 0:
+		# --- all fine : return OK
+				return 0
+			elif i == 1:
+		# --- erase old password style user
+				self.ssh.sendline ("no username %s"%newuser)
+				try:
+					self.ssh.expect (self.prompt)
+				except pexpect.TIMEOUT:
+					self.error ('timeout')
+				except pexpect.EOF:
+					self.error ('eof')
+				except KeyboardInterrupt:
+					self.error ('keyboard')
+		# --- send again the "secret" command
+				self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
+				try:
+					self.ssh.expect (self.prompt)
+				except pexpect.TIMEOUT:
+					self.error ('timeout')
+				except pexpect.EOF:
+					self.error ('eof')
+				except KeyboardInterrupt:
+					self.error ('keyboard')
+		# --- all fine now : return OK
+				return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
 		except pexpect.EOF:
@@ -495,25 +515,24 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	if verb == True:
 		print ">>> Enable password successfully changed"
 # --- fermeture de la connexion en cours
-	ret = cisco.ssh_close(0)
-	if ret != 0 :
-		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
-		print "## Failed to close SSH connection properly"
-		return (1)
-	else :
-		log.write ("%sSSH connection closed\n"%time(1))
-		if verb:
-			print ">>> SSH connection closed"
-	log.write ("%s* Initial connection to %s closed\n"%(time(1),host))
-	#time.sleep(3)
+	#ret = cisco.ssh_close(0)
+	#if ret != 0 :
+		#log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
+		#print "## Failed to close SSH connection properly"
+		#return (1)
+	#else :
+		#log.write ("%sSSH connection closed\n"%time(1))
+		#if verb:
+			#print ">>> SSH connection closed"
+	#log.write ("%s* Initial connection to %s closed\n"%(time(1),host))
 # --- validate the new credentials (simuler connexion)
 	if verb == True:
 			print ("... Checking new credentials")
 # --- try to connect with the new password
 	logincount = logincount + 1
-	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb, logincount)
+	cisco2=connect(host, user, sshpassNew, enapassNew, log, startTime,verb, logincount)
 # --- test if connection was successful
-	if isinstance(cisco,ciscoSsh) != True:
+	if isinstance(cisco2,ciscoSsh) != True:
 		if verb == True:
 			print ("### Could not retrieve an object")
 		#print ("%s"%sshpassNew)
@@ -521,7 +540,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%(time(1),host))
 		print "## Failed do log-in with new credentials - stopping here for this host"
 		return (1)
-	ret = cisco.ssh_close(0)
+	ret = cisco2.ssh_close(0)
 	if ret != 0 :
 		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
 		print "## Failed to close SSH connection properly"
@@ -531,22 +550,22 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		if verb:
 			print ">>> New credentials working well : SSH connection closed"
 # --- delete extra accounts
-	logincount = logincount + 1
-	cisco=connect(host, user, sshpassNew, enapassNew, log, startTime,verb, logincount)
-	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
-			print ("### Could not retrieve an object")
-		#print ("Password %s"%sshpassNew)
-# --- new user log in failed : stop here, don't delete any account
-		log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%(time(1),host))
-		print "## Failed do log-in with new credentials - stopping here for this host"
-		return 1
-	# ajouter retours erreur
-	userlist = cisco.show_username()
-	if verb == True:
-		print ">>> User list :\n  %s"%userlist
-# --- configure terminal mode
-	cisco=confter(cisco,log,verb)
+	#logincount = logincount + 1
+	#cisco3=connect(host, user, sshpassNew, enapassNew, log, startTime,verb, logincount)
+	#if isinstance(cisco,ciscoSsh) != True:
+		#if verb == True:
+			#print ("### Could not retrieve an object")
+		##print ("Password %s"%sshpassNew)
+## --- new user log in failed : stop here, don't delete any account
+		#log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%(time(1),host))
+		#print "## Failed do log-in with new credentials - stopping here for this host"
+		#return 1
+	## ajouter retours erreur
+	#userlist = cisco.show_username()
+	#if verb == True:
+		#print ">>> User list :\n  %s"%userlist
+## --- configure terminal mode
+	#cisco=confter(cisco,log,verb)
 	ret = cisco.delete_user(newuser,userlist)
 	if ret != 0 :
 		log.write ("%sFailed to delete users properly - check it manually\n"%time(1))
@@ -559,10 +578,10 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 # --- check again the connection
 # --- open a new session cisco2 and keep the cisco one alive until it is checked
 # --- give back a shell to the user otherwise
-	cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb)
+	cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount)
 	if cisco2 == 1 :
 # --- new user log in failed : stop here, don't delete any account
-		log.write ("%sValid user potentially deleted by mistake on %s\n"%time(1),host)
+		log.write ("%sValid user potentially deleted by mistake on %s\n"%(time(1),host))
 		print "## OUPS ! Something got smelly : I could not log-in back. I am afraid that I deleted the valid user. Please check it manually in the session below :"
 # --- open interactive shell to allow the user to check it
 		cisco.interactive()
@@ -584,6 +603,24 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		print ">>> New user validated again"
 		print ">>> Exiting and closing connection"
 # --- we close connections
+	ret = cisco2.ssh_close(0)
+	if ret != 0 :
+		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
+		print "## Failed to close SSH connection properly"
+		return (1)
+	else :
+		log.write ("%sSSH connection closed\n"%time(1))
+		if verb:
+			print ">>> SSH Test connection closed"
+	ret = cisco.ssh_close(0)
+	if ret != 0 :
+		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
+		print "## Failed to close SSH connection properly"
+		return (1)
+	else :
+		log.write ("%sSSH connection closed\n"%time(1))
+		if verb:
+			print ">>> SSH connection closed"
 	ret = cisco2.ssh_close(0)
 	if ret != 0 :
 		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
