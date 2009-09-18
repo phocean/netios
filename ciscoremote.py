@@ -514,17 +514,6 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	log.write ("%sEnable password successfully changed\n"%time(1))
 	if verb == True:
 		print ">>> Enable password successfully changed"
-# --- fermeture de la connexion en cours
-	#ret = cisco.ssh_close(0)
-	#if ret != 0 :
-		#log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
-		#print "## Failed to close SSH connection properly"
-		#return (1)
-	#else :
-		#log.write ("%sSSH connection closed\n"%time(1))
-		#if verb:
-			#print ">>> SSH connection closed"
-	#log.write ("%s* Initial connection to %s closed\n"%(time(1),host))
 # --- validate the new credentials (simuler connexion)
 	if verb == True:
 			print ("... Checking new credentials")
@@ -550,20 +539,9 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		if verb:
 			print ">>> New credentials working well : SSH connection closed"
 # --- delete extra accounts
-	#logincount = logincount + 1
-	#cisco3=connect(host, user, sshpassNew, enapassNew, log, startTime,verb, logincount)
-	#if isinstance(cisco,ciscoSsh) != True:
-		#if verb == True:
-			#print ("### Could not retrieve an object")
-		##print ("Password %s"%sshpassNew)
-## --- new user log in failed : stop here, don't delete any account
-		#log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%(time(1),host))
-		#print "## Failed do log-in with new credentials - stopping here for this host"
-		#return 1
-	## ajouter retours erreur
-	#userlist = cisco.show_username()
-	#if verb == True:
-		#print ">>> User list :\n  %s"%userlist
+	userlist = cisco.show_username()
+	if verb == True:
+		print ">>> User list :\n  %s"%userlist
 ## --- configure terminal mode
 	#cisco=confter(cisco,log,verb)
 	ret = cisco.delete_user(newuser,userlist)
@@ -797,17 +775,7 @@ def show_run(host,user,sshpass, enapass, log, startTime, verb):
 #----------------------------------- MAIN -------------------------------------#
 #==============================================================================#
 		
-def main():
-	
-# --- open log file
-	if os.path.exists('log') == False:
-	   os.mkdir('log')
-	#time.sleep(1)
-	startTime=time(0)
-	if os.path.exists('log/%s'%startTime) == False:
-	   os.mkdir('log/%s'%startTime)
-	log = open ("log/%s/CiscoRemote-%s.log"%(startTime,startTime),"w")
-	log.write ("%s## CiscoRemote started ##\n"%time(1))
+def main(log,startTime):
 	
 # --- check the options
 	parser = process_args()
@@ -977,7 +945,16 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+		# --- open log file
+		if os.path.exists('log') == False:
+			os.mkdir('log')
+		#time.sleep(1)
+		startTime=time(0)
+		if os.path.exists('log/%s'%startTime) == False:
+			os.mkdir('log/%s'%startTime)
+		log = open ("log/%s/CiscoRemote-%s.log"%(startTime,startTime),"w")
+		log.write ("%s## CiscoRemote started ##\n"%time(1))
+		main(log,startTime)
     except pexpect.ExceptionPexpect, e:
         print str(e)
         sys.exit(1)
