@@ -1,3 +1,9 @@
+2009-09-15  (0.20) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : lot of fixes and code cleanup : to be continued
+ * ciscoremote.py : connect function : remove one useless connection
+ * ciscoremote.py : cisco.ena : correct some bug of implementation of pexpect and make it simpler
+
 2009-09-15  (0.17) Jean-Christophe Baptiste <jc@phocean.net>
 
  * ciscoremote.py : class SshConn : handle logging when there are multiple concurrent connections
