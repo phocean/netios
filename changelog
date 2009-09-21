@@ -1,6 +1,10 @@
 2009-09-15  (0.20) Jean-Christophe Baptiste <jc@phocean.net>
 
- * ciscoremote.py : lot of fixes and code cleanup : to be continued
+ * ciscoremote.py : cosmetic changes, tested OK for merging with master
+
+2009-09-15  (0.18) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : a lot of fixes and code cleanup : to be continued
  * ciscoremote.py : connect function : remove one useless connection
  * ciscoremote.py : cisco.ena : correct some bug of implementation of pexpect and make it simpler
 
@@ -45,9 +49,12 @@ channel 1: open failed: resource shortage:
 117 : interactive
 self.error(ena) et self.error(unexp_ena) : necessary ?
 245 : error not catched
+257 : remake old_password function
 266 : return user lines (stat)
 275 : show run to extend
 522 : comment
 630 : errors
 861 : comment
 615+ : compact error code
+
+mode to switch between secret and password

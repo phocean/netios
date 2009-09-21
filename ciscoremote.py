@@ -73,13 +73,13 @@ class sshConn:
 	def login (self,verb):
 		try:
 			self.ssh = pexpect.spawn ('ssh %s@%s'%(self.user,self.host))
-			self.ssh.logfile = sys.stdout
+			#self.ssh.logfile = sys.stdout
 			if self.logincount > 0:
 				fout = file ("log/%s/%s-%s.log.%d"%(self.startTime,time(0),self.host,self.logincount),"w")
 			else:
 				fout = file ("log/%s/%s-%s.log"%(self.startTime,time(0),self.host),"w")
 			self.ssh.logfile = fout
-			print self.logincount
+			print "~ SSH session n°%d"%self.logincount
 			i = self.ssh.expect (["assword:", r"yes/no"],timeout=7)
 	# --- prompted for password
 			if i==0:
@@ -133,14 +133,15 @@ class sshConn:
 # --- close ssh connection
 	def ssh_close(self,ct):
 		try:
+	# --- flag indicates that end is necessary before closing (conf t)
 			if ct==1 :
 				self.ssh.sendline ('end')
 				self.ssh.expect(self.prompt)
 				self.ssh.sendline("exit")
 			elif ct==0 :
 				self.ssh.sendline("exit")
-			#self.ssh.expect(pexpect.EOF)
 			self.ssh.close()
+			#self.ssh.logfile.close()
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -170,15 +171,18 @@ class ciscoSsh(sshConn):
 		except pexpect.TIMEOUT:
 			i = self.ssh.expect(self.prompt)
 			if i == 0:
-				print "already tacacs"
+				#print "already tacacs"
 				return 0
+		# --- no prompt, serious timeout issue
 			else:
 				self.error(timeout)
 		except pexpect.EOF:
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
+		# --- send enable password
 		self.ssh.sendline (self.enapass)
+		# --- should be enabled
 		try:
 			self.ssh.expect(['>','#'])
 		except pexpect.TIMEOUT:
@@ -187,6 +191,7 @@ class ciscoSsh(sshConn):
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
+		# --- define terminal length
 		self.ssh.sendline ('terminal length 0')
 		try:
 			self.ssh.expect(self.prompt)
@@ -196,6 +201,7 @@ class ciscoSsh(sshConn):
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
+		# --- return OK status
 		return 0
 
 # --- configure terminal mode
@@ -556,6 +562,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 # --- check again the connection
 # --- open a new session cisco2 and keep the cisco one alive until it is checked
 # --- give back a shell to the user otherwise
+	logincount = logincount + 1
 	cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount)
 	if cisco2 == 1 :
 # --- new user log in failed : stop here, don't delete any account
@@ -581,24 +588,6 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		print ">>> New user validated again"
 		print ">>> Exiting and closing connection"
 # --- we close connections
-	ret = cisco2.ssh_close(0)
-	if ret != 0 :
-		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
-		print "## Failed to close SSH connection properly"
-		return (1)
-	else :
-		log.write ("%sSSH connection closed\n"%time(1))
-		if verb:
-			print ">>> SSH Test connection closed"
-	ret = cisco.ssh_close(0)
-	if ret != 0 :
-		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
-		print "## Failed to close SSH connection properly"
-		return (1)
-	else :
-		log.write ("%sSSH connection closed\n"%time(1))
-		if verb:
-			print ">>> SSH connection closed"
 	ret = cisco2.ssh_close(0)
 	if ret != 0 :
 		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
@@ -675,7 +664,7 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim):
 # Put down the program options
 #===============================================================================
 def process_args(): 
-	parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.15")
+	parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.20")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
 	parser.add_option("-f", "--hostfile", action="store", dest="file", help="Remote hosts file.")
 	parser.add_option("-c","--commands", action="store", dest="commandfile", help="Commands file")
@@ -876,7 +865,11 @@ def main(log,startTime):
 					error.write ("%s"%host)
 					print "### Skip %s"%host
 					continue
-		hostfile.close()
+		try:
+			hostfile.close()
+		except IOError:
+			print "## I can't close the file you specified"
+			sys.exit(2)
 		print "### All hosts parsed"
 		log.write ("%s### All host parsed ##\n"%time(1))
 		
@@ -941,7 +934,7 @@ def main(log,startTime):
 			print "### All hosts parsed"
 			log.write ("%s### All host parsed ##\n"%time(1))
 	log.close()
-	sys.exit()
+	return 0
 
 if __name__ == '__main__':
     try:
@@ -954,7 +947,11 @@ if __name__ == '__main__':
 			os.mkdir('log/%s'%startTime)
 		log = open ("log/%s/CiscoRemote-%s.log"%(startTime,startTime),"w")
 		log.write ("%s## CiscoRemote started ##\n"%time(1))
-		main(log,startTime)
+		ret = main(log,startTime)
+		if ret==0:
+			sys.exit(0)
+		else:
+			sys.exit(1)
     except pexpect.ExceptionPexpect, e:
         print str(e)
         sys.exit(1)
