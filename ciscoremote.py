@@ -22,373 +22,11 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #===============================================================================
 
-import pexpect, sys, getpass, re, datetime, os
+import getpass
+from ciscoclass import *
 from optparse import OptionParser
 
-ciscoprompt = "\$|\%|\#|\>"
 
-#===============================================================================
-#  Generic SSH class based on pexpect, managing the connection
-#===============================================================================
-
-class sshConn:
-	
-	def __init__ (self,host,user,password,prompt,log,startTime,logincount):
-		self.host=host
-		self.user=user
-		self.password=password
-		self.prompt=prompt
-		self.startTime=startTime
-		self.log=log
-		self.ssh=None
-		self.logincount=logincount
-
-# --- print error messages
-	def error (self,type):
-		if type == 'timeout':
-			print "### SSH Timeout : check that the SSH service is on"
-			self.log.write ("%sCould not open SSH socket\n"%time(1))
-		elif type == 'keyboardinterrupt':
-			print "### User keyboard interrupt"
-			self.log.write ("%sUser keybord interrupt\n"%time(1))
-		elif type == "eof":
-			print "### The socket has been closed or interrupted on the remote host !"
-			self.log.write ("%sConnection closed by peer\n"%time(1))
-		elif type == "denied":
-			print '### Permission denied on host. Can\'t login'
-			self.log.write ("%sPermission denied on host. Can\'t login\n"%time(1))
-		elif type == 'user':
-			print '### Wrong username or/and password !'
-			self.log.write ("%sWrong username or/and password\n"%time(1))
-		elif type == 'ena':
-			print "### Access Denied : wrong Enable password"
-			self.log.write ("%sWrong Enable password\n"%time(1))
-		elif type == 'unexp_ena':
-			print "### Can't enter Enable mode : unexpected answer"
-			self.log.write ("%sUnexpeted answer while entering Enable mode\n"%time(1))
-		self.ssh.kill(0)
-		return 1
-
-# --- process ssh login
-	def login (self,verb):
-		try:
-			self.ssh = pexpect.spawn ('ssh %s@%s'%(self.user,self.host))
-			#self.ssh.logfile = sys.stdout
-			if self.logincount > 0:
-				fout = file ("log/%s/%s-%s.log.%d"%(self.startTime,time(0),self.host,self.logincount),"w")
-			else:
-				fout = file ("log/%s/%s-%s.log"%(self.startTime,time(0),self.host),"w")
-			self.ssh.logfile = fout
-			print "~ SSH session n°%d"%self.logincount
-			i = self.ssh.expect (["assword:", r"yes/no"],timeout=7)
-	# --- prompted for password
-			if i==0:
-				if verb:
-					print ">>> Authenticating"
-				self.ssh.sendline(self.password)
-			elif i==1:
-	# --- prompted for key
-				if verb:
-					print ">>> Key request"
-				self.ssh.sendline("yes")
-				self.ssh.expect("assword", timeout=7)
-				self.ssh.sendline(self.password)
-	# --- prompt after password input : denied or choice for a terminal type
-			i = self.ssh.expect (['Permission denied', 'Terminal type', self.prompt, 'assword'],timeout=15)
-	# --- permission denied : call to error function
-			if i == 0:
-				return (self.error('denied'))
-			elif i == 1:
-	# --- send terminal type
-				if verb:
-					print '>>> SSH Login OK... need to send terminal type.'
-				self.ssh.sendline('vt100')
-				self.ssh.expect (self.prompt)
-			elif i == 2:
-	# --- login successful
-				if verb:
-					print '>>> SSH Login OK.'
-			elif i == 3:
-	# --- wrong username
-				return (self.error('user'))
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- interactive
-	def interactive(self):
-		try:
-			self.ssh.interact()
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- close ssh connection
-	def ssh_close(self,ct):
-		try:
-	# --- flag indicates that end is necessary before closing (conf t)
-			if ct==1 :
-				self.ssh.sendline ('end')
-				self.ssh.expect(self.prompt)
-				self.ssh.sendline("exit")
-			elif ct==0 :
-				self.ssh.sendline("exit")
-			self.ssh.close()
-			#self.ssh.logfile.close()
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-#===============================================================================
-# Cisco class inherited from the sshConn class ;
-# contains specific Cisco properties and commands
-#===============================================================================
-					
-class ciscoSsh(sshConn):
-	
-	def __init__(self,host,user,password,prompt,enapass,log,startTime,logincount):
-		sshConn.__init__(self, host, user, password, prompt,log,startTime,logincount)
-		self.enapass=enapass
-
-# --- enable mode	
-	def ena (self):
-		self.ssh.sendline ('enable')
-		try:
-			self.ssh.expect(r'assword')
-		# --- already in enable mode (ex : tacacs)
-		# --- if self.ssh.expect(['>','#'], timeout=2) == 1:
-		except pexpect.TIMEOUT:
-			i = self.ssh.expect(self.prompt)
-			if i == 0:
-				#print "already tacacs"
-				return 0
-		# --- no prompt, serious timeout issue
-			else:
-				self.error(timeout)
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-		# --- send enable password
-		self.ssh.sendline (self.enapass)
-		# --- should be enabled
-		try:
-			self.ssh.expect(['>','#'])
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-		# --- define terminal length
-		self.ssh.sendline ('terminal length 0')
-		try:
-			self.ssh.expect(self.prompt)
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-		# --- return OK status
-		return 0
-
-# --- configure terminal mode
-	def conft (self):
-		try:
-			self.ssh.sendline ('configure terminal')
-			self.ssh.expect(self.prompt)
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- change user password
-	def ssh_change(self,newuser,password):
-		self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
-		try:
-			i = self.ssh.expect ([self.prompt,"ERROR: Can not have both a user password and a user secret"])
-			if i == 0:
-		# --- all fine : return OK
-				return 0
-			elif i == 1:
-		# --- erase old password style user
-				self.ssh.sendline ("no username %s"%newuser)
-				try:
-					self.ssh.expect (self.prompt)
-				except pexpect.TIMEOUT:
-					self.error ('timeout')
-				except pexpect.EOF:
-					self.error ('eof')
-				except KeyboardInterrupt:
-					self.error ('keyboard')
-		# --- send again the "secret" command
-				self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
-				try:
-					self.ssh.expect (self.prompt)
-				except pexpect.TIMEOUT:
-					self.error ('timeout')
-				except pexpect.EOF:
-					self.error ('eof')
-				except KeyboardInterrupt:
-					self.error ('keyboard')
-		# --- all fine now : return OK
-				return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- change user password, old style
-	def pass_change_old(self,password):
-		try:
-			self.ssh.sendline ("username %s password %s"%(self.user,password))
-			self.ssh.expect (self.prompt)
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- change enable password
-	def ena_change(self, enapass):
-		try:
-			self.ssh.sendline ("enable secret 0 %s"%enapass)
-			self.ssh.expect (self.prompt)
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- show username
-	def show_username(self):
-		try:
-	# --- filter show run for user names
-			self.ssh.sendline ("show run | include username")
-	# --- expecting some characters after the current prompt
-			self.ssh.expect ("$.*"+self.prompt)
-	# --- grab the content
-			res=self.ssh.before
-	# --- split the string into a table
-			userlines = re.split("\n+", res)
-	# --- parse the table to clean up garbage (empty lines or eventually not filtered input)
-			nblines = len(userlines)
-			i=0
-			while i < nblines:
-				match = re.match("^username",userlines[i])
-	# --- delete the table entry if the line does not start with username
-				if not match:
-					del(userlines[i])
-					nblines = nblines-1
-					i = i-1
-	# --- extract the user name
-				else :
-					res = re.match(r"(\w+) (\w+)",userlines[i])
-					userlines[i]=res.group(2)
-				i=i+1
-	# --- return the number of users
-			return (userlines)
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- show run
-	def sh_run(self):
-		try:	
-			self.ssh.sendline ("show run")
-			self.ssh.expect ("$.*"+self.prompt)
-			res=self.ssh.before
-			userlines = re.split("\n+", res)
-			print ("%s"%userlines)
-			return (userlines)
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- delete user
-	def delete_user(self,user,userlist):
-		try:
-			for i in userlist:
-				if i != user:
-					self.ssh.sendline("no username %s"%i)
-					print ">>> User \'%s\' deleted"%i
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- send out an customized command, without any warranty
-	def custcommand(self,command):
-		try:
-			self.ssh.sendline ("%s"%command)
-			self.ssh.expect (self.prompt)
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-# --- write mem
-	def writemem(self):
-		try:
-			self.ssh.sendline ("end")
-			self.ssh.expect (self.prompt)
-			self.ssh.sendline ("write mem")
-			self.ssh.expect (self.prompt)
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
-#===============================================================================
-# horodating function
-# according to the receive flag, it returns a format for a log file entry or the
-# file name itself
-#===============================================================================
-def time (flag):
-	if flag:
-		hor=datetime.datetime.now()
-		hor=hor.strftime("%b  %d %H:%M:%S ")
-		return (hor)
-	else:
-		hor=datetime.datetime.now()
-		hor=hor.strftime("%Y-%m-%dT%H%M")
-		return (hor)
 	
 #===============================================================================
 # next functions just take care of user input
@@ -641,8 +279,8 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim):
 			ret = cisco.custcommand(command)
 			if ret != 0:
 				log.write ("%sSkip %s\n"%(time(1),host))
-				error = open ("log/%s/Command Error-%s.log"%(startTime,time(0)),"w")
-				error.write ("%s"%host)
+				error = open ("log/%s/Command Error.log"%startTime,"w+")
+				error.write ("%s\n"%host)
 				#print "## Skip %s"%host
 				#next
 				print ("Command %s failed : aborting"%command)
@@ -783,6 +421,7 @@ def main(log,startTime):
 		ret = raw_input("Yes / No")
 		res = re.match("Y",ret)
 		#if res
+	error = None
 		
 # --- applying commands from a file to the hosts in the host file
 	if opts.commandfile is not None and opts.file is not None:
@@ -800,11 +439,16 @@ def main(log,startTime):
 			ret = changepass(host,user,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
 			if ret != 0:
 				log.write ("%sSkip %s\n"%(time(1),host))
-				error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
-				error.write ("%s"%host)
+				# --- Log file for hosts in error
+				if error is None:
+					error = open ("log/%s/HostError.log"%startTime,"w+")
+				error.write ("%s\n"%host)
 				print "### Skip %s"%host
 				continue
-		hostfile.close()
+		try:
+			hostfile.close()
+		except IOError:
+			print "## I can't close the file you specified"
 		print "### All hosts parsed"
 		log.write ("%s### All host parsed ##\n"%time(1))
 		
@@ -819,8 +463,10 @@ def main(log,startTime):
 			ret = custom(host,user,sshpass,enapass,opts.commandfile,log,startTime,verb,sim)
 			if ret != 0:
 				log.write ("%sSkip %s\n"%(time(1),host))
-				error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
-				error.write ("%s"%host)
+				# --- Log file for hosts in error
+				if error is None:
+					error = open ("log/%s/HostError.log"%startTime,"w+")
+				error.write ("%s\n"%host)
 				print "### Skip %s"%host
 				continue
 			print "### All hosts parsed"
@@ -842,8 +488,10 @@ def main(log,startTime):
 				ret=userlist(host,user,sshpass,enapass,log,startTime,verb)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
-					error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
-					error.write ("%s"%host)
+					# --- Log file for hosts in error
+					if error is None:
+						error = open ("log/%s/HostError.log"%startTime,"w+")
+					error.write ("%s\n"%host)
 					print "### Skip %s"%host
 					continue
 		elif opts.showusr is None:
@@ -861,8 +509,10 @@ def main(log,startTime):
 				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
-					error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
-					error.write ("%s"%host)
+					# --- Log file for hosts in error
+					if error is None:
+						error = open ("log/%s/HostError.log"%startTime,"w+")
+					error.write ("%s\n"%host)
 					print "### Skip %s"%host
 					continue
 		try:
@@ -884,8 +534,10 @@ def main(log,startTime):
 		## nécessaire ???
 		if ret != 0:
 			log.write ("%sSkip %s\n"%(time(1),host))
-			error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
-			error.write ("%s"%host)
+			# --- Log file for hosts in error
+			if error is None:
+				error = open ("log/%s/HostError.log"%startTime,"w+")
+			error.write ("%s\n"%host)
 			print "### Skip %s"%host
 			#continue
 		print "### All hosts parsed : check out the './out' folder for user list"
@@ -906,8 +558,10 @@ def main(log,startTime):
 				ret=userlist(host,user,sshpass,enapass,log,startTime,verb)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
-					error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
-					error.write ("%s"%host)
+					# --- Log file for hosts in error
+					if error is None:
+						error = open ("log/%s/HostError.log"%startTime,"w+")
+					error.write ("%s\n"%host)
 					print "### Skip %s"%host
 					continue
 			print "### All hosts parsed : check out the './out' folder for user list"
@@ -927,13 +581,20 @@ def main(log,startTime):
 				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
-					error = open ("log/%s/HostError-%s.log"%(startTime,time(0)),"w")
-					error.write ("%s"%host)
+					# --- Log file for hosts in error
+					if error is None:
+						error = open ("log/%s/HostError.log"%startTime,"w+")
+					error.write ("%s\n"%host)
 					print "### Skip %s"%host
 					continue
 			print "### All hosts parsed"
 			log.write ("%s### All host parsed ##\n"%time(1))
-	log.close()
+	try:
+		log.close()
+		if error:
+			error.close()
+	except IOError:
+			print "## I can't close the file you specified"
 	return 0
 
 if __name__ == '__main__':

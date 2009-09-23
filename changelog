@@ -1,3 +1,9 @@
+2009-09-23  (0.30) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * split the monolithic file into modules : sshclass.py, ciscoclass.py
+ * ciscoremote.py : 'do show username'
+ * ciscoremote.py : remove useless time in HostError log / also forgot some close()
+
 2009-09-15  (0.20) Jean-Christophe Baptiste <jc@phocean.net>
 
  * ciscoremote.py : cosmetic changes, tested OK for merging with master
@@ -33,7 +39,6 @@
 * gestion fichier mots de passe
 * write the doc !
 * check again the options
-* improve readability
 * test sync dev
 * forgot to manage no host issue
 * no enable pass mode
