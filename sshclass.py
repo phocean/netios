@@ -24,8 +24,6 @@
 
 import pexpect, sys, os, re, datetime
 
-ciscoprompt = "\$|\%|\#|\>"
-
 #===============================================================================
 # horodating function
 # according to the receive flag, it returns a format for a log file entry or the
@@ -47,11 +45,11 @@ def time (flag):
 
 class sshConn:
 	
-	def __init__ (self,host,user,password,prompt,log,startTime,logincount):
+	def __init__ (self,host,user,password,log,startTime,logincount):
 		self.host=host
 		self.user=user
 		self.password=password
-		self.prompt=prompt
+		self.prompt="\$|\%|\#|\>"
 		self.startTime=startTime
 		self.log=log
 		self.ssh=None
@@ -125,6 +123,7 @@ class sshConn:
 			elif i == 3:
 	# --- wrong username
 				return (self.error('user'))
+			self.ssh.setecho(False)
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -163,3 +162,6 @@ class sshConn:
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
+
+	def __del__(self):
+		pass

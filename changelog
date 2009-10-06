@@ -1,3 +1,10 @@
+2009-09-23  (0.40) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoclass.py : add prompt for config mode (issue with long commands)
+ * ciscoclass.py / ciscoremote.py : implement AAA config
+ * ciscoclass.py / sshclass.py : add destructors (cf doc pexpect)
+ * * : various minor improvments
+
 2009-09-23  (0.30) Jean-Christophe Baptiste <jc@phocean.net>
 
  * split the monolithic file into modules : sshclass.py, ciscoclass.py

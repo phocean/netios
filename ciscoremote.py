@@ -25,8 +25,6 @@
 import getpass
 from ciscoclass import *
 from optparse import OptionParser
-
-
 	
 #===============================================================================
 # next functions just take care of user input
@@ -76,7 +74,7 @@ def connect (host,user,sshpass,enapass, log, startTime,verb,logincount):
 	if verb:
 		print ">>> Connecting to %s..."%host
 # --- create the cisco object
-	cisco = ciscoSsh(host, user, sshpass,ciscoprompt,enapass,log,startTime,logincount)
+	cisco = ciscoSsh(host, user, sshpass,enapass,log,startTime,logincount)
 # --- logging
 	ret = cisco.login(verb)
 # --- connection failed
@@ -115,7 +113,7 @@ def confter(cisco,log,verb):
 # and give back a shell to the user otherwise, so that it is still possible to
 # manually correct the problem (and keep a ssh connection up
 #===============================================================================
-def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,startTime,verb,sim):
+def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,startTime,verb,sim, aaa):
 	logincount = 0 # login ID for concurrent ssh session
 # --- call to connect function
 	cisco=connect(host, user, sshpass, enapass, log, startTime,verb, logincount)
@@ -130,6 +128,16 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		print ">>> Changing passwords"
 # --- not simulation : we call the function to change the ssh password
 	if sim == False:
+		if aaa == True:
+			ret = cisco.aaa()
+			if ret != 0 :
+				log.write ("%sFailed to change AAA mode - exiting\n"%time(1))
+				print "## Failed to change AAA mode !"
+				return (1)
+			else:
+				log.write ("%sAAA mode changed\n"%time(1))
+				if verb == True:
+					print ">>> AAA mode changed"
 		ret = cisco.ssh_change(newuser,sshpassNew)
 		if ret != 0 :
 			log.write ("%sFailed to change SSH password - exiting\n"%time(1))
@@ -163,7 +171,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 			print ("... Checking new credentials")
 # --- try to connect with the new password
 	logincount = logincount + 1
-	cisco2=connect(host, user, sshpassNew, enapassNew, log, startTime,verb, logincount)
+	cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount)
 # --- test if connection was successful
 	if isinstance(cisco2,ciscoSsh) != True:
 		if verb == True:
@@ -183,11 +191,16 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		if verb:
 			print ">>> New credentials working well : SSH connection closed"
 # --- delete extra accounts
+	ret = cisco.exit()
+	if ret != 0 :
+		log.write ("%sFailed to exit\n"%time(1))
+		print "## Failed to exit"
+		return (1)
 	userlist = cisco.show_username()
 	if verb == True:
 		print ">>> User list :\n  %s"%userlist
 ## --- configure terminal mode
-	#cisco=confter(cisco,log,verb)
+	cisco=confter(cisco,log,verb)
 	ret = cisco.delete_user(newuser,userlist)
 	if ret != 0 :
 		log.write ("%sFailed to delete users properly - check it manually\n"%time(1))
@@ -245,6 +258,11 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		if verb:
 			print ">>> SSH connection closed"
 	return 0
+
+#===============================================================================
+# Change AAA
+#===============================================================================
+
 
 #===============================================================================
 # This function read the command file line by line and send it to the cisco device
@@ -310,6 +328,7 @@ def process_args():
 	parser.add_option("-u","--showuser", action="store_true", dest="showusr", help="Show user mode")
 	parser.add_option("-s","--simulate", action="store_true", dest="simu", help="Simulation mode")
 	parser.add_option("-r","--shrun", action="store_true", dest="showrun", help="Show Run")
+	parser.add_option("-a","--aaa", action="store_true", dest="aaa", help="Change AAA model")
 	return parser
 
 #===============================================================================
@@ -361,7 +380,7 @@ def userlist(host,user,sshpass,enapass,log, startTime,verb):
 			print ("### Could not retrieve an object")
 		return 1
 # --- call the function to extract users
-	serlist = cisco.show_username()
+	userlist = cisco.show_username()
 	
 # --- log it in a dedicated folder
 	if os.path.exists('out') == False:
@@ -416,6 +435,10 @@ def main(log,startTime):
 		verb = True
 	else:
 		sim = False
+	if opts.aaa == True:
+		aaa = True
+	else:
+		aaa = False
 	if opts.commandfile is not None:
 		print "attention"
 		ret = raw_input("Yes / No")
@@ -436,7 +459,7 @@ def main(log,startTime):
 			if host and host[-1] == '\n':
 				host = host[:-1]
 			print ">>> Working on host %s"%host
-			ret = changepass(host,user,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
+			ret = changepass(host,user,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa)
 			if ret != 0:
 				log.write ("%sSkip %s\n"%(time(1),host))
 				# --- Log file for hosts in error
@@ -506,7 +529,7 @@ def main(log,startTime):
 				if host and host[-1] == '\n':
 					host = host[:-1]
 				print ">>> Working on host %s"%host
-				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
+				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
 					# --- Log file for hosts in error
@@ -578,7 +601,7 @@ def main(log,startTime):
 				if host and host[-1] == '\n':
 					host = host[:-1]
 				print ">>> Working on host %s"%host
-				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim)
+				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
 					# --- Log file for hosts in error

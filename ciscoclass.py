@@ -31,9 +31,11 @@ from sshclass import *
 					
 class ciscoSsh(sshConn):
 	
-	def __init__(self,host,user,password,prompt,enapass,log,startTime,logincount):
-		sshConn.__init__(self, host, user, password, prompt,log,startTime,logincount)
+	def __init__(self,host,user,password,enapass,log,startTime,logincount):
+		sshConn.__init__(self, host, user, password, log,startTime,logincount)
 		self.enapass=enapass
+		self.prompt="\$|\%|\#|\>"
+		self.confprompt="\(config\)\#"
 
 # --- enable mode	
 	def ena (self):
@@ -58,7 +60,7 @@ class ciscoSsh(sshConn):
 		self.ssh.sendline (self.enapass)
 		# --- should be enabled
 		try:
-			self.ssh.expect(['>','#'])
+			self.ssh.expect(self.prompt)
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
 		except pexpect.EOF:
@@ -75,6 +77,16 @@ class ciscoSsh(sshConn):
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
+		# --- define terminal width
+		self.ssh.sendline ('terminal width 80')
+		try:
+			self.ssh.expect(self.prompt)
+		except pexpect.TIMEOUT:
+			self.error ('timeout')
+		except pexpect.EOF:
+			self.error ('eof')
+		except KeyboardInterrupt:
+			self.error ('keyboard')
 		# --- return OK status
 		return 0
 
@@ -82,7 +94,7 @@ class ciscoSsh(sshConn):
 	def conft (self):
 		try:
 			self.ssh.sendline ('configure terminal')
-			self.ssh.expect(self.prompt)
+			self.ssh.expect(self.confprompt)
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -95,7 +107,7 @@ class ciscoSsh(sshConn):
 	def ssh_change(self,newuser,password):
 		self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
 		try:
-			i = self.ssh.expect ([self.prompt,"ERROR: Can not have both a user password and a user secret"])
+			i = self.ssh.expect ([self.confprompt,"ERROR: Can not have both a user password and a user secret"])
 			if i == 0:
 		# --- all fine : return OK
 				return 0
@@ -103,7 +115,7 @@ class ciscoSsh(sshConn):
 		# --- erase old password style user
 				self.ssh.sendline ("no username %s"%newuser)
 				try:
-					self.ssh.expect (self.prompt)
+					self.ssh.expect (self.confprompt)
 				except pexpect.TIMEOUT:
 					self.error ('timeout')
 				except pexpect.EOF:
@@ -113,7 +125,7 @@ class ciscoSsh(sshConn):
 		# --- send again the "secret" command
 				self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
 				try:
-					self.ssh.expect (self.prompt)
+					self.ssh.expect (self.confprompt)
 				except pexpect.TIMEOUT:
 					self.error ('timeout')
 				except pexpect.EOF:
@@ -133,7 +145,7 @@ class ciscoSsh(sshConn):
 	def pass_change_old(self,password):
 		try:
 			self.ssh.sendline ("username %s password %s"%(self.user,password))
-			self.ssh.expect (self.prompt)
+			self.ssh.expect (self.confprompt)
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -146,7 +158,44 @@ class ciscoSsh(sshConn):
 	def ena_change(self, enapass):
 		try:
 			self.ssh.sendline ("enable secret 0 %s"%enapass)
-			self.ssh.expect (self.prompt)
+			self.ssh.expect (self.confprompt)
+			return 0
+		except pexpect.TIMEOUT:
+			self.error ('timeout')
+		except pexpect.EOF:
+			self.error ('eof')
+		except KeyboardInterrupt:
+			self.error ('keyboard')
+
+# --- apply AAA
+	def aaa(self):
+		try:
+			self.ssh.sendline ("no aaa new-model")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa new-model")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ('aaa authentication login default local group tacacs+ enable')
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa authentication enable default group tacacs+ enable")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa authorization exec default local group tacacs+ if-authenticated")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa authorization commands 1 default local group tacacs+ if-authenticated")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa authorization commands 15 default local  group tacacs+ if-authenticated")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa authorization network default local group tacacs+")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa accounting exec default  start-stop group  tacacs+")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa accounting commands 1 default start-stop group tacacs+")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa accounting commands 15 default start-stop group tacacs+")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa accounting network default start-stop group tacacs+")
+			self.ssh.expect (self.confprompt)
+			self.ssh.sendline ("aaa accounting system default start-stop group tacacs+")
+			self.ssh.expect (self.confprompt)		
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -159,7 +208,7 @@ class ciscoSsh(sshConn):
 	def show_username(self):
 		try:
 	# --- filter show run for user names
-			self.ssh.sendline ("do show run | include username")
+			self.ssh.sendline ("show run | include username")
 	# --- expecting some characters after the current prompt
 			self.ssh.expect ("$.*"+self.prompt)
 	# --- grab the content
@@ -208,11 +257,26 @@ class ciscoSsh(sshConn):
 
 # --- delete user
 	def delete_user(self,user,userlist):
-		try:
-			for i in userlist:
-				if i != user:
+		for i in userlist:
+			if i != user:
+				try:
 					self.ssh.sendline("no username %s"%i)
+					self.ssh.expect (self.confprompt)
 					print ">>> User \'%s\' deleted"%i
+				except pexpect.TIMEOUT:
+					self.error ('timeout')
+				except pexpect.EOF:
+					self.error ('eof')
+				except KeyboardInterrupt:
+					self.error ('keyboard')
+		return 0
+		
+
+# --- send out an customized command, without any warranty
+	def custcommand(self,command):
+		try:
+			self.ssh.sendline ("%s"%command)
+			self.ssh.expect (self.confprompt)
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -221,11 +285,11 @@ class ciscoSsh(sshConn):
 		except KeyboardInterrupt:
 			self.error ('keyboard')
 
-# --- send out an customized command, without any warranty
-	def custcommand(self,command):
+# --- exit
+	def exit(self):
 		try:
-			self.ssh.sendline ("%s"%command)
-			self.ssh.expect (self.prompt)
+			self.ssh.sendline ("exit")
+			self.ssh.expect(self.prompt)
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -249,3 +313,5 @@ class ciscoSsh(sshConn):
 		except KeyboardInterrupt:
 			self.error ('keyboard')
 
+	def __del__(self):
+		pass
