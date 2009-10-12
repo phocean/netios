@@ -1,3 +1,12 @@
+2009-09-23  (0.41) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciremote.py : in case of tacacs, it is better to make the connection tests with the management account
+ * ciremote.py : improve options parser
+ * ciscoclass.py / ciscoremote.py : implement AAA config
+ * ciscoclass.py / sshclass.py : add destructors (cf doc pexpect)
+ * * : various minor improvments
+
+
 2009-09-23  (0.40) Jean-Christophe Baptiste <jc@phocean.net>
 
  * ciscoclass.py : add prompt for config mode (issue with long commands)
@@ -68,5 +77,6 @@ self.error(ena) et self.error(unexp_ena) : necessary ?
 630 : errors
 861 : comment
 615+ : compact error code
+444 : cleanup the code with useless if statements for options
 
 mode to switch between secret and password

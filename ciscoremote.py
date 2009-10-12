@@ -7,6 +7,9 @@
 #    you provide it with a file containing any cisco command you wish.
 #    Copyright (C) 2009  Jean-Christophe Baptiste
 #    (jc@phocean.net, http://www.phocean.net)
+#
+#    All the credits go to the Pexpect developpers, which is a great module.
+#    Plese check http://pexpect.sourceforge.net/pexpect.html
 # 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -113,7 +116,7 @@ def confter(cisco,log,verb):
 # and give back a shell to the user otherwise, so that it is still possible to
 # manually correct the problem (and keep a ssh connection up
 #===============================================================================
-def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,startTime,verb,sim, aaa):
+def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,startTime,verb,sim, aaa, tac, nocheck):
 	logincount = 0 # login ID for concurrent ssh session
 # --- call to connect function
 	cisco=connect(host, user, sshpass, enapass, log, startTime,verb, logincount)
@@ -170,26 +173,29 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	if verb == True:
 			print ("... Checking new credentials")
 # --- try to connect with the new password
-	logincount = logincount + 1
-	cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount)
-# --- test if connection was successful
-	if isinstance(cisco2,ciscoSsh) != True:
-		if verb == True:
-			print ("### Could not retrieve an object")
-		#print ("%s"%sshpassNew)
+	if nocheck is None:
+		logincount = logincount + 1
+		if tac == True:
+			cisco2=connect(host, user, sshpass, enapass, log, startTime,verb, logincount)
+		else:
+			cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount)
+	# --- test if connection was successful
+		if isinstance(cisco2,ciscoSsh) != True:
+			if verb == True:
+				print ("### Could not retrieve an object")
 # --- new user log in failed : stop here, don't delete any account
-		log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%(time(1),host))
-		print "## Failed do log-in with new credentials - stopping here for this host"
-		return (1)
-	ret = cisco2.ssh_close(0)
-	if ret != 0 :
-		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
-		print "## Failed to close SSH connection properly"
-		return (1)
-	else :
-		log.write ("%sSSH connection closed\n"%time(1))
-		if verb:
-			print ">>> New credentials working well : SSH connection closed"
+			log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%(time(1),host))
+			print "## Failed do log-in with new credentials - stopping here for this host"
+			return (1)
+		ret = cisco2.ssh_close(0)
+		if ret != 0 :
+			log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
+			print "## Failed to close SSH connection properly"
+			return (1)
+		else :
+			log.write ("%sSSH connection closed\n"%time(1))
+			if verb:
+				print ">>> New credentials working well : SSH connection closed"
 # --- delete extra accounts
 	ret = cisco.exit()
 	if ret != 0 :
@@ -213,15 +219,30 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 # --- check again the connection
 # --- open a new session cisco2 and keep the cisco one alive until it is checked
 # --- give back a shell to the user otherwise
-	logincount = logincount + 1
-	cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount)
-	if cisco2 == 1 :
-# --- new user log in failed : stop here, don't delete any account
-		log.write ("%sValid user potentially deleted by mistake on %s\n"%(time(1),host))
-		print "## OUPS ! Something got smelly : I could not log-in back. I am afraid that I deleted the valid user. Please check it manually in the session below :"
-# --- open interactive shell to allow the user to check it
-		cisco.interactive()
-		ret = cisco.ssh_close(0)
+	if nocheck is None:
+		logincount = logincount + 1
+		if tac == True:
+			cisco2=connect(host, user, sshpass, enapass, log, startTime,verb, logincount)
+		else:
+			cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount)
+		if cisco2 == 1 :
+	# --- new user log in failed : stop here, don't delete any account
+			log.write ("%sValid user potentially deleted by mistake on %s - Manual session\n"%(time(1),host))
+			print "## OUPS ! Something got smelly : I could not log-in back. I am afraid that I deleted the valid user. Please check it manually in the session below :"
+	# --- open interactive shell to allow the user to check it
+			cisco.interactive()
+			ret = cisco.ssh_close(0)
+			if ret != 0 :
+				log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
+				print "## Failed to close SSH connection properly"
+				return (1)
+			else :
+				log.write ("%sSSH connection closed\n"%time(1))
+				if verb:
+					print ">>> SSH connection closed"
+				return (1)
+		# --- we close connections
+		ret = cisco2.ssh_close(0)
 		if ret != 0 :
 			log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
 			print "## Failed to close SSH connection properly"
@@ -229,8 +250,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		else :
 			log.write ("%sSSH connection closed\n"%time(1))
 			if verb:
-				print ">>> SSH connection closed"
-		return 1
+				print ">>> SSH Test connection closed"
 # --- all fine !
 	log.write ("%sOld user deleted and new user validated for %s\n"%(time(1),host))
 # --- write conf to startup config
@@ -238,16 +258,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	if verb:
 		print ">>> New user validated again"
 		print ">>> Exiting and closing connection"
-# --- we close connections
-	ret = cisco2.ssh_close(0)
-	if ret != 0 :
-		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
-		print "## Failed to close SSH connection properly"
-		return (1)
-	else :
-		log.write ("%sSSH connection closed\n"%time(1))
-		if verb:
-			print ">>> SSH Test connection closed"
+# --- we close connection
 	ret = cisco.ssh_close(0)
 	if ret != 0 :
 		log.write ("%sFailed to close SSH connection properly - exiting\n"%time(1))
@@ -320,15 +331,17 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim):
 # Put down the program options
 #===============================================================================
 def process_args(): 
-	parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.20")
+	parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.41")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
-	parser.add_option("-f", "--hostfile", action="store", dest="file", help="Remote hosts file.")
-	parser.add_option("-c","--commands", action="store", dest="commandfile", help="Commands file")
+	parser.add_option("-f", "--hostfile", action="store", dest="file", metavar="FILE", help="Remote hosts file.")
+	parser.add_option("-c","--commands", action="store", dest="commandfile", metavar="FILE", help="Commands file")
 	parser.add_option("-n","--newuser", action="store_true", dest="newusr", help="Add user mode")
+	parser.add_option("-t","--tacacs", action="store_true", dest="tacacs", help="The management account is a tacacs one")
+	parser.add_option("","--no-check", action="store_true", dest="nocheck", help="No proof check")
 	parser.add_option("-u","--showuser", action="store_true", dest="showusr", help="Show user mode")
 	parser.add_option("-s","--simulate", action="store_true", dest="simu", help="Simulation mode")
-	parser.add_option("-r","--shrun", action="store_true", dest="showrun", help="Show Run")
-	parser.add_option("-a","--aaa", action="store_true", dest="aaa", help="Change AAA model")
+	parser.add_option("-r","--shrun", action="store_true", dest="showrun", help="[EXPERIMENTAL] Show Run")
+	parser.add_option("-a","--aaa", action="store_true", dest="aaa", help="[EXPERIMENTAL] Change AAA model")
 	return parser
 
 #===============================================================================
@@ -426,6 +439,8 @@ def main(log,startTime):
 # --- check the options
 	parser = process_args()
 	(opts, hosts) = parser.parse_args()
+	if len(hosts) < 1 and opts.file is None:
+		parser.error("incorrect number of arguments")
 	if opts.verb == True:
 		verb = True
 	else:
@@ -439,11 +454,16 @@ def main(log,startTime):
 		aaa = True
 	else:
 		aaa = False
+	if opts.tacacs == True:
+		tac = True
+	else:
+		tac = False
 	if opts.commandfile is not None:
-		print "attention"
+		print "Attention"
 		ret = raw_input("Yes / No")
 		res = re.match("Y",ret)
-		#if res
+		if res == None:
+			sys.exit(1)
 	error = None
 		
 # --- applying commands from a file to the hosts in the host file
@@ -459,7 +479,7 @@ def main(log,startTime):
 			if host and host[-1] == '\n':
 				host = host[:-1]
 			print ">>> Working on host %s"%host
-			ret = changepass(host,user,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa)
+			ret = changepass(host,user,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa, tac, opts.nocheck)
 			if ret != 0:
 				log.write ("%sSkip %s\n"%(time(1),host))
 				# --- Log file for hosts in error
@@ -529,7 +549,7 @@ def main(log,startTime):
 				if host and host[-1] == '\n':
 					host = host[:-1]
 				print ">>> Working on host %s"%host
-				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa)
+				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa, tac, opts.nocheck)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
 					# --- Log file for hosts in error
@@ -601,7 +621,7 @@ def main(log,startTime):
 				if host and host[-1] == '\n':
 					host = host[:-1]
 				print ">>> Working on host %s"%host
-				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa)
+				ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,verb,sim, aaa, tac, opts.nocheck)
 				if ret != 0:
 					log.write ("%sSkip %s\n"%(time(1),host))
 					# --- Log file for hosts in error

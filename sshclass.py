@@ -2,6 +2,10 @@
 # coding=UTF-8
 
 #===============================================================================
+#    Sshclass is a module to be used with CiscoRemote.
+#    It is the interface based on Pexpect (http://pexpect.sourceforge.net/pexpect.html)
+#    that handles the SSH connection process.
+#
 #    CiscoRemote is a tool to mass configure a park of cisco devices.
 #    Its primary feature is password updating, but it can be extended if
 #    you provide it with a file containing any cisco command you wish.

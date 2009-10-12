@@ -2,6 +2,9 @@
 # coding=UTF-8
 
 #===============================================================================
+#    Ciscoclass is the module containing the Cisco object for CiscoRemote
+#    Its attributes contain some selected IOS commands useful to the program.
+#
 #    CiscoRemote is a tool to mass configure a park of cisco devices.
 #    Its primary feature is password updating, but it can be extended if
 #    you provide it with a file containing any cisco command you wish.
@@ -35,13 +38,13 @@ class ciscoSsh(sshConn):
 		sshConn.__init__(self, host, user, password, log,startTime,logincount)
 		self.enapass=enapass
 		self.prompt="\$|\%|\#|\>"
-		self.confprompt="\(config\)\#"
+		self.confprompt="\(config\)\#|\(config-line\)\#"
 
 # --- enable mode	
 	def ena (self):
 		self.ssh.sendline ('enable')
 		try:
-			self.ssh.expect(r'assword')
+			i = self.ssh.expect([r'assword',self.prompt])
 		# --- already in enable mode (ex : tacacs)
 		# --- if self.ssh.expect(['>','#'], timeout=2) == 1:
 		except pexpect.TIMEOUT:
@@ -56,17 +59,21 @@ class ciscoSsh(sshConn):
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
-		# --- send enable password
-		self.ssh.sendline (self.enapass)
-		# --- should be enabled
-		try:
-			self.ssh.expect(self.prompt)
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
+		if i == 0:
+			# --- send enable password
+			self.ssh.sendline (self.enapass)
+			# --- should be enabled
+			try:
+				self.ssh.expect(self.prompt)
+			except pexpect.TIMEOUT:
+				self.error ('timeout')
+			except pexpect.EOF:
+				self.error ('eof')
+			except KeyboardInterrupt:
+				self.error ('keyboard')
+		elif i == 1:
+			#print "already enabled (tacacs)"
+			pass
 		# --- define terminal length
 		self.ssh.sendline ('terminal length 0')
 		try:

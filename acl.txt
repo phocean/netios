@@ -1,0 +1,11 @@
+line vty 0 5
+no access-class 10 in
+no access-class 11 in
+exit
+no access-list 10
+no access-list 11
+access-list 10 permit any
+line vty 0 5
+access-class 10 in
+end
+write mem
