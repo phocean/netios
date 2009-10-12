@@ -1,13 +1,9 @@
-2009-09-23  (0.41) Jean-Christophe Baptiste <jc@phocean.net>
+2009-10-12  (0.41) Jean-Christophe Baptiste <jc@phocean.net>
 
  * ciremote.py : in case of tacacs, it is better to make the connection tests with the management account
  * ciremote.py : improve options parser
- * ciscoclass.py / ciscoremote.py : implement AAA config
- * ciscoclass.py / sshclass.py : add destructors (cf doc pexpect)
- * * : various minor improvments
 
-
-2009-09-23  (0.40) Jean-Christophe Baptiste <jc@phocean.net>
+2009-10-06  (0.40) Jean-Christophe Baptiste <jc@phocean.net>
 
  * ciscoclass.py : add prompt for config mode (issue with long commands)
  * ciscoclass.py / ciscoremote.py : implement AAA config
