@@ -283,7 +283,7 @@ class ciscoSsh(sshConn):
 	def custcommand(self,command):
 		try:
 			self.ssh.sendline ("%s"%command)
-			self.ssh.expect (self.confprompt)
+			self.ssh.expect ([self.confprompt,self.prompt])
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')

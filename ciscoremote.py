@@ -105,7 +105,7 @@ def confter(cisco,log,verb):
 		print ">>> Entering Configure Terminal mode"
 	ret = cisco.conft()
 	if ret != 0 :
-		log.write ("%sFailed to enter Configure Terminal mode- exiting\n"%(time(1),host))
+		log.write ("%sFailed to enter Configure Terminal mode- exiting\n"%time(1))
 		return (1)
 	log.write ("%sEntered configure terminal mode\n"%time(1))
 	return (cisco)
@@ -376,8 +376,8 @@ def credential_chain(log):
 #===============================================================================
 
 def credential_chain_new(log):
-	newuser=new_user()
 	(user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain(log)
+	newuser=new_user()
 	return (newuser,user,sshpass,enapass,sshpassNew,enapassNew)
 
 #===============================================================================
@@ -459,7 +459,7 @@ def main(log,startTime):
 	else:
 		tac = False
 	if opts.commandfile is not None:
-		print "Attention"
+		print "Attention !! Use it at your own risk : I don't check the commands, so the command file has to be safe and clean. Confirm :"
 		ret = raw_input("Yes / No")
 		res = re.match("Y",ret)
 		if res == None:
