@@ -1,3 +1,7 @@
+2009-10-13  (0.42-isis-a) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciremote.py : add enable command, just for isis purpose
+
 2009-10-13  (0.42) Jean-Christophe Baptiste <jc@phocean.net>
 
  * ciremote.py : minor improvments, typo in conf t log

@@ -331,7 +331,7 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim):
 # Put down the program options
 #===============================================================================
 def process_args(): 
-	parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.42")
+	parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.42-isis-a")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
 	parser.add_option("-f", "--hostfile", action="store", dest="file", metavar="FILE", help="Remote hosts file.")
 	parser.add_option("-c","--commands", action="store", dest="commandfile", metavar="FILE", help="Commands file")
