@@ -122,20 +122,20 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 	cisco=connect(host, user, sshpass, enapass, log, startTime,verb, logincount, debug)
 # --- if cisco is an object, the connection process was successful
 	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
+		if verb:
 			print ("### Could not retrieve an object")
 		return (1)
 # --- call to function to enter configure terminal mode
 	cisco=confter(cisco,log,verb)
 	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
+		if verb:
 			print ("### Configure Terminal : could not retrieve an object")
 		return (1)
-	if verb == True:
+	if verb:
 		print ">>> Changing passwords"
 # --- not simulation : we call the function to change the ssh password
-	if sim == False:
-		if aaa == True:
+	if sim is None:
+		if aaa:
 			ret = cisco.aaa()
 			if ret != 0 :
 				log.write ("%sFailed to change AAA mode - exiting\n"%time(1))
@@ -143,7 +143,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 				return (1)
 			else:
 				log.write ("%sAAA mode changed\n"%time(1))
-				if verb == True:
+				if verb:
 					print ">>> AAA mode changed"
 		ret = cisco.ssh_change(newuser,sshpassNew)
 		if ret != 0 :
@@ -153,13 +153,13 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 # --- simulation : we don't do anything and continue
 	else:
 		log.write ("%sOperation changing password skipped : simulation mode\n"%time(1))
-		if verb == True:
+		if verb:
 			print "!!! Operation changing password skipped : simulation mode"
 	log.write ("%sSSH password successfully changed\n"%time(1))
-	if verb == True:
+	if verb:
 		print ">>> Password successfully changed"
 # --- not simulation : we change the enable password
-	if sim == False:
+	if sim is None:
 		ret = cisco.ena_change(enapassNew)
 		if ret != 0 :
 			log.write ("%sFailed to change Enable password- exiting\n"%time(1))
@@ -168,24 +168,24 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 # --- simulation : we don't do anything and continue
 	else:
 		log.write ("%sOperation changing enable password skipped : simulation mode\n"%time(1))
-		if verb == True:
+		if verb:
 			print "!!! Operation changing enable password skipped : simulation mode"
 	log.write ("%sEnable password successfully changed\n"%time(1))
-	if verb == True:
+	if verb:
 		print ">>> Enable password successfully changed"
 # --- validate the new credentials (simuler connexion)
-	if verb == True:
+	if verb:
 			print ("... Checking new credentials")
 # --- try to connect with the new password
 	if nocheck is None:
 		logincount = logincount + 1
-		if tac == True:
+		if tac:
 			cisco2=connect(host, user, sshpass, enapass, log, startTime,verb, logincount, debug)
 		else:
 			cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount, debug)
 	# --- test if connection was successful
 		if isinstance(cisco2,ciscoSsh) != True:
-			if verb == True:
+			if verb:
 				print ("### Could not retrieve an object")
 # --- new user log in failed : stop here, don't delete any account
 			log.write ("%sFailed do log-in with new credentials - stopping here for %s\n"%(time(1),host))
@@ -200,7 +200,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		print "## Failed to exit"
 		return (1)
 	userlist = cisco.show_username()
-	if verb == True:
+	if verb:
 		print ">>> User list :\n  %s"%userlist
 ## --- configure terminal mode
 	cisco=confter(cisco,log,verb)
@@ -211,14 +211,14 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		return (1)
 	else :
 		log.write ("%sUnderisable users deleted\n"%time(1))
-		if verb:
+		if verb == True:
 			print ">>> Underisable users deleted"
 # --- check again the connection
 # --- open a new session cisco2 and keep the cisco one alive until it is checked
 # --- give back a shell to the user otherwise
 	if nocheck is None:
 		logincount = logincount + 1
-		if tac == True:
+		if tac:
 			cisco2=connect(host, user, sshpass, enapass, log, startTime,verb, logincount, debug)
 		else:
 			cisco2=connect(host, newuser, sshpassNew, enapassNew, log, startTime,verb, logincount, debug)
@@ -242,7 +242,7 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,log,sta
 		print ">>> New user validated again"
 		print ">>> Exiting and closing connection"
 # --- we close connection
-	close_connect(cisco, log, verb, 1)
+	close_connect(cisco, log, verb, 0)
 	return 0
 
 #===============================================================================
@@ -254,19 +254,19 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim, debug)
 	error = None
 	cisco=connect(host, user, sshpass, enapass, log, startTime,verb, logincount, debug)
 	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
+		if verb:
 			print ("### Could not retrieve an object")
 		return 1
 # --- enter configure terminal mode
 	cisco=confter(cisco,log,verb)
 	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
+		if verb:
 			print ("### Configure Terminal : could not retrieve an object")
 		return (1)
 # --- open the file of custom commands
-	if verb == True:
+	if verb:
 		print (">>> Opening command file %s"%commandfile)
-	commands = fileopen("%s"%commandfile,"r")
+	commands = fileopen("%s"%commandfile)
 	if verb:
 		print ">>> Parsing commands"
 # --- parse the host file
@@ -274,7 +274,7 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim, debug)
 		command = line_cleanup(command)
 		print ("... %s"%command)
 	# --- not simulating : send the custom command to each host of the file
-		if sim == False :
+		if sim is None :
 			ret = cisco.custcommand(command)
 			if ret != 0:
 				f_command_skip(host,error,log)
@@ -282,7 +282,7 @@ def custom (host,user,sshpass,enapass,commandfile,log,startTime,verb,sim, debug)
 	# --- simulating : don't do anything and continue
 		else:
 			log.write ("%sOperation skipped : simulation mode\n"%(datetime.time(1)))
-			if verb == True:
+			if verb:
 				print ">>> Operation skipped : simulation mode"
 # --- close the file
 	fileclose(commands)
@@ -329,7 +329,7 @@ def fileopen(path):
 #===============================================================================
 def fileclose(file):
 	try:
-		hostfile.close()
+		file.close()
 	except IOError:
 		print "## I can't close the file you specified"
 	return 0
@@ -368,7 +368,7 @@ def userlist(host,user,sshpass,enapass,log, startTime,verb, debug):
 	logincount = 0
 	cisco=connect(host,user,sshpass,enapass, log, startTime,verb, logincount, debug)
 	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
+		if verb:
 			print ("### Could not retrieve an object")
 		return 1
 # --- call the function to extract users
@@ -379,7 +379,7 @@ def userlist(host,user,sshpass,enapass,log, startTime,verb, debug):
 	if os.path.exists('out/%s'%startTime) == False:
 	   os.mkdir('out/%s'%startTime)
 	if userlist:
-		if verb == True:
+		if verb:
 			print "<-- %s -->"%host
 		flist = open ("out/%s/users.log"%startTime,"a")
 		flist.write ("%s"%host)
@@ -406,7 +406,7 @@ def ntpserver(host,user,sshpass,enapass,log, startTime,verb,newntpsrv, debug):
 	logincount = 0
 	cisco=connect(host,user,sshpass,enapass, log, startTime,verb, logincount, debug)
 	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
+		if verb:
 			print ("### Could not retrieve an object")
 		return 1
 # --- call the function to extract ntp servers
@@ -419,12 +419,12 @@ def ntpserver(host,user,sshpass,enapass,log, startTime,verb,newntpsrv, debug):
 # --- enter configure terminal mode
 	cisco=confter(cisco,log,verb)
 	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
+		if verb:
 			print ("### Configure Terminal : could not retrieve an object")
 		return (1)
 # --- print and suppress ntp servers
 	if ntpsrv:
-		if verb == True:
+		if verb:
 			print "<-- %s -->"%host
 		flist = open ("out/%s/ntp.log"%startTime,"a")
 		flist.write ("%s"%host)
@@ -438,6 +438,7 @@ def ntpserver(host,user,sshpass,enapass,log, startTime,verb,newntpsrv, debug):
 			error.write ("%s\n"%host)
 			print ("Command no 'ntp server' failed with %s"%i)
 		flist.write ("\n")
+		flist.close()
 	else :
 		print "### Empty string returned !"
 		log.write ("%sEmpty string returned instead of ntp server list\n"%time(1))
@@ -453,7 +454,6 @@ def ntpserver(host,user,sshpass,enapass,log, startTime,verb,newntpsrv, debug):
 			error.write ("%s\n"%host)
 			print ("Command 'ntp server' failed with %s"%i)
 	log.write ("%sRetrieved successfully a ntp server list\n"%time(1))
-	flist.close()
 	# --- write conf to startup config
 	ret=cisco.writemem()
 	if verb:
@@ -469,7 +469,7 @@ def show_run(host,user,sshpass, enapass, log, startTime, verb, debug):
 	logincount = 0
 	cisco=connect(host,user,sshpass,enapass, log, startTime,verb, logincount, debug)
 	if isinstance(cisco,ciscoSsh) != True:
-		if verb == True:
+		if verb:
 			print ("### Could not retrieve an object")
 		return 1
 	cisco.sh_run()
@@ -557,11 +557,11 @@ def opts_check(parser,hosts,opts):
 	if len(hosts) < 1 and opts.file is None:
 		parser.error("incorrect number of arguments")
 	
-	if opts.debug is not None:
+	if opts.debug:
 		print\
 		"################################################################################\n# Beware that in debug mode, logfiles may contain sensible data like passwords.#\n# Erase them after use : rm -rf log                                            #\n################################################################################\n"
 		
-	if opts.commandfile is not None:
+	if opts.commandfile:
 		print "#### Use this mode at your own risk : I don't check the commands, so the command file has to be safe and clean. Confirm :\n"
 		ret = raw_input("Yes / No\n")
 		res = re.match("Y|y",ret)
@@ -589,9 +589,9 @@ def main(log,startTime):
 	error = None
 
 # --- begin of custom command mode
-	if opts.commandfile is not None:
+	if opts.commandfile:
 	# --- host file
-		if opts.file is not None:
+		if opts.file:
 			hosts = fileopen("%s"%opts.file)		
 	# --- read credentials
 		(user,sshpass,enapass)=credentials()		
@@ -604,15 +604,15 @@ def main(log,startTime):
 			if ret != 0:
 				f_error_skip(host,error,log)
 				continue
-		if opts.file is not None:
+		if opts.file:
 			fileclose(hosts)
 		f_hosts_end(log)
 # --- end of custom command mode
 
 # --- show user mode
-	elif opts.showusr is not None:
+	elif opts.showusr:
 		# --- host file
-		if opts.file is not None:
+		if opts.file:
 			hosts = fileopen("%s"%opts.file)
 		(user,sshpass,enapass)=credentials()
 		for host in hosts:
@@ -623,15 +623,15 @@ def main(log,startTime):
 			if ret != 0:
 				f_error_skip(host,error,log)
 				continue
-		if opts.file is not None:
+		if opts.file:
 			fileclose(hosts)
 		f_hosts_end(log)
 # --- end of show user mode
 
 # --- show run mode
-	elif opts.showrun is not None:
+	elif opts.showrun:
 		# --- host file
-		if opts.file is not None:
+		if opts.file:
 			hosts = fileopen("%s"%opts.file)
 		(user,sshpass,enapass)=credentials()
 		for host in hosts:
@@ -642,15 +642,15 @@ def main(log,startTime):
 			if ret != 0:
 				f_error_skip(host,error,log)
 				continue
-		if opts.file is not None:
+		if opts.file:
 			fileclose(hosts)
 		f_hosts_end(log)
 # --- end of show run mode
 
 # --- ntp mode
-	elif opts.ntp is not None:
+	elif opts.ntp:
 		# --- host file
-		if opts.file is not None:
+		if opts.file:
 			hosts = fileopen("%s"%opts.file)
 		(user,sshpass,enapass)=credentials()
 		for host in hosts:
@@ -661,7 +661,7 @@ def main(log,startTime):
 			if ret != 0:
 				f_error_skip(host,error,log)
 				continue
-		if opts.file is not None:
+		if opts.file:
 			fileclose(hosts)
 		f_hosts_end(log)
 # --- end of ntp mode
@@ -669,7 +669,7 @@ def main(log,startTime):
 # --- default mode : change password
 	else:
 		# --- host file
-		if opts.file is not None:
+		if opts.file:
 			hosts = fileopen("%s"%opts.file)
 		# --- new local user mode...
 		if opts.newusr:
@@ -685,11 +685,11 @@ def main(log,startTime):
 			# clean up
 			host=line_cleanup(host)
 			print ">>> Working on host %s"%host
-			ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,opts.verb,opts.simu, opts.aaa, opts.tac, opts.nocheck, opts.debug)
+			ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,opts.verb,opts.simu, opts.aaa, opts.tacacs, opts.nocheck, opts.debug)
 			if ret != 0:
 				f_error_skip(host,error,log)
 				continue
-		if opts.file is not None:
+		if opts.file:
 			fileclose(hosts)
 		f_hosts_end(log)
 # --- end of change password mode
