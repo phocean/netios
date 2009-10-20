@@ -529,7 +529,7 @@ def process_args():
 	parser.add_option("-s","--simulate", action="store_true", dest="simu", help="Simulation mode")
 	parser.add_option("-r","--shrun", action="store_true", dest="showrun", help="[EXPERIMENTAL] Show Run")
 	parser.add_option("-a","--aaa", action="store_true", dest="aaa", help="[EXPERIMENTAL] Change AAA model")
-	parser.add_option("","--ntp-server", action="append", dest="ntp", help="[EXPERIMENTAL] Change ntp servers")
+	parser.add_option("-p","--ntp-server", action="append", dest="ntp", help="[EXPERIMENTAL] Change ntp servers")
 	return parser
 
 #===============================================================================
@@ -640,8 +640,7 @@ def main(log,startTime):
 			# clean up
 			host=line_cleanup(host)
 			print ">>> Host %s"%host
-			newntpsrv=['192.168.1.1']
-			ret=ntpserver(host,user,sshpass,enapass,log,startTime,opts.verb, newntpsrv, opts.debug)
+			ret=ntpserver(host,user,sshpass,enapass,log,startTime,opts.verb, opts.ntp, opts.debug)
 			if ret != 0:
 				f_error_skip(host,error,log)
 				continue
