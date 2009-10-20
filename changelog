@@ -1,15 +1,20 @@
+2009-10-19  (0.50-isis) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py, sshclass.py : add debug mode, ssh log files are created only when required, to preserve passwords
+ * a lot of code cleanup
+
 2009-10-13  (0.42-isis-a) Jean-Christophe Baptiste <jc@phocean.net>
 
  * ciremote.py : add enable command, just for isis purpose
 
 2009-10-13  (0.42) Jean-Christophe Baptiste <jc@phocean.net>
 
- * ciremote.py : minor improvments, typo in conf t log
+ * ciscoremote.py : minor improvments, typo in conf t log
  
 2009-10-12  (0.41) Jean-Christophe Baptiste <jc@phocean.net>
 
- * ciremote.py : in case of tacacs, it is better to make the connection tests with the management account
- * ciremote.py : improve options parser
+ * ciscoremote.py : in case of tacacs, it is better to make the connection tests with the management account
+ * ciscoremote.py : improve options parser
 
 2009-10-06  (0.40) Jean-Christophe Baptiste <jc@phocean.net>
 
@@ -58,17 +63,12 @@
 * multiprocessing
 * gestion fichier mots de passe
 * write the doc !
-* check again the options
 * test sync dev
-* forgot to manage no host issue
-* no enable pass mode
-* hide passwords in log files
+* ntp change mode
+* install script
 """
 
 Know issues :
-
-## OUPS ! Something got smelly : I could not log-in back. I am afraid that I deleted the valid user. Please check it manually in the session below :
-channel 1: open failed: resource shortage: 
 
 106 : wrong username
 117 : interactive
@@ -82,5 +82,3 @@ self.error(ena) et self.error(unexp_ena) : necessary ?
 861 : comment
 615+ : compact error code
 444 : cleanup the code with useless if statements for options
-
-mode to switch between secret and password

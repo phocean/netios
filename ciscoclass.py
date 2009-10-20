@@ -34,8 +34,8 @@ from sshclass import *
 					
 class ciscoSsh(sshConn):
 	
-	def __init__(self,host,user,password,enapass,log,startTime,logincount):
-		sshConn.__init__(self, host, user, password, log,startTime,logincount)
+	def __init__(self,host,user,password,enapass,log,startTime,logincount, debug):
+		sshConn.__init__(self, host, user, password, log,startTime,logincount, debug)
 		self.enapass=enapass
 		self.prompt="\$|\%|\#|\>"
 		self.confprompt="\(config\)\#|\(config-line\)\#"
@@ -239,6 +239,69 @@ class ciscoSsh(sshConn):
 				i=i+1
 	# --- return the number of users
 			return (userlines)
+		except pexpect.TIMEOUT:
+			self.error ('timeout')
+		except pexpect.EOF:
+			self.error ('eof')
+		except KeyboardInterrupt:
+			self.error ('keyboard')
+
+# --- show ntp
+	def show_ntp(self):
+		try:
+	# --- filter show run for user names
+			self.ssh.sendline ("show run | include ntp server")
+	# --- expecting some characters after the current prompt
+			self.ssh.expect ("$.*"+self.prompt)
+	# --- grab the content
+			res=self.ssh.before
+	# --- split the string into a table
+			ntpserv = re.split("\n+", res)
+	# --- parse the table to clean up garbage (empty lines or eventually not filtered input)
+			nblines = len(ntpserv)
+			i=0
+			while i < nblines:
+				match = re.match("^ntp server",ntpserv[i])
+	# --- delete the table entry if the line does not start with username
+				if not match:
+					del(ntpserv[i])
+					nblines = nblines-1
+					i = i-1
+	# --- extract the user name
+				else :
+					res = re.match(r"(\w+) (\w+) ((\d+.){3}\d+)",ntpserv[i])
+					ntpserv[i]=res.group(3)
+				i=i+1
+	# --- return the number of users
+			return (ntpserv)
+		except pexpect.TIMEOUT:
+			self.error ('timeout')
+		except pexpect.EOF:
+			self.error ('eof')
+		except KeyboardInterrupt:
+			self.error ('keyboard')
+
+# --- apply ntp server
+	def ntp_server(self,ntpsrv):
+		try:
+			for i in ntpsrv:
+				self.ssh.sendline ("ntp server %s"%i)
+				self.ssh.expect (self.confprompt)
+			return 0
+		except pexpect.TIMEOUT:
+			self.error ('timeout')
+		except pexpect.EOF:
+			self.error ('eof')
+		except KeyboardInterrupt:
+			self.error ('keyboard')
+
+# --- apply no ntp server
+	def no_ntp_server(self,ntpsrv):
+		try:
+			for i in ntpsrv:
+				self.ssh.sendline ("no ntp server %s"%i)
+				self.ssh.expect (self.confprompt)
+			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
 		except pexpect.EOF:

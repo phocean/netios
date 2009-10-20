@@ -49,7 +49,7 @@ def time (flag):
 
 class sshConn:
 	
-	def __init__ (self,host,user,password,log,startTime,logincount):
+	def __init__ (self,host,user,password,log,startTime,logincount, debug):
 		self.host=host
 		self.user=user
 		self.password=password
@@ -58,6 +58,7 @@ class sshConn:
 		self.log=log
 		self.ssh=None
 		self.logincount=logincount
+		self.debug=debug
 
 # --- print error messages
 	def error (self,type):
@@ -90,11 +91,12 @@ class sshConn:
 		try:
 			self.ssh = pexpect.spawn ('ssh %s@%s'%(self.user,self.host))
 			#self.ssh.logfile = sys.stdout
-			if self.logincount > 0:
-				fout = file ("log/%s/%s-%s.log.%d"%(self.startTime,time(0),self.host,self.logincount),"w")
-			else:
-				fout = file ("log/%s/%s-%s.log"%(self.startTime,time(0),self.host),"w")
-			self.ssh.logfile = fout
+			if self.debug is True:
+				if self.logincount > 0:
+					fout = file ("log/%s/%s-%s.log.%d"%(self.startTime,self.host,time(0), self.logincount),"w")
+				else:
+					fout = file ("log/%s/%s-%s.log"%(self.startTime, self.host, time(0)),"w")
+				self.ssh.logfile = fout
 			print "~ SSH session n°%d"%self.logincount
 			i = self.ssh.expect (["assword:", r"yes/no"],timeout=7)
 	# --- prompted for password
