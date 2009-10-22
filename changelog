@@ -1,4 +1,8 @@
-2009-10-19  (0.50-isis) Jean-Christophe Baptiste <jc@phocean.net>
+2009-10-19  (0.51) Jean-Christophe Baptiste <jc@phocean.net>
+
+* ciscoremote.py : options sanity check and reorganize help display
+
+2009-10-19  (0.50) Jean-Christophe Baptiste <jc@phocean.net>
 
  * ciscoremote.py, sshclass.py : add debug mode, ssh log files are created only when required, to preserve passwords
  * a lot of code cleanup
@@ -64,7 +68,6 @@
 * gestion fichier mots de passe
 * write the doc !
 * test sync dev
-* ntp change mode
 * install script
 """
 

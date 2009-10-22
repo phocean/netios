@@ -27,7 +27,7 @@
 
 import getpass
 from ciscoclass import *
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 	
 #===============================================================================
 # next functions just take care of user input
@@ -306,7 +306,7 @@ def process_args():
 	parser.add_option("-c","--commands", action="store", dest="commandfile", metavar="FILE", help="Commands file")
 	parser.add_option("-n","--newuser", action="store_true", dest="newusr", help="Add user mode")
 	parser.add_option("-t","--tacacs", action="store_true", dest="tacacs", help="The management account is a tacacs one")
-	parser.add_option("","--no-check", action="store_true", dest="nocheck", help="No proof check")
+	parser.add_option("--no-check", action="store_true", dest="nocheck", help="No proof check")
 	parser.add_option("-u","--showuser", action="store_true", dest="showusr", help="Show user mode")
 	parser.add_option("-s","--simulate", action="store_true", dest="simu", help="Simulation mode")
 	parser.add_option("-r","--shrun", action="store_true", dest="showrun", help="[EXPERIMENTAL] Show Run")
@@ -534,19 +534,29 @@ def f_hosts_end(log):
 # Put down the program options
 #===============================================================================
 def process_args(): 
-	parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.50-isis")
+	parser = OptionParser(usage="usage: %prog [options] host1 host2 ... hostn", version="%prog 0.51")
+	#group = OptionGroup(parser, "Options","Optional settings for tracing and debugging.")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
-	parser.add_option("-d", "--debug", action="store_true", dest="debug", help="Debug mode : verbose and extra logs")
-	parser.add_option("-f", "--hostfile", action="store", dest="file", metavar="FILE", help="Remote hosts file.")
-	parser.add_option("-c","--commands", action="store", dest="commandfile", metavar="FILE", help="Commands file")
-	parser.add_option("-n","--newuser", action="store_true", dest="newusr", help="Add user mode")
-	parser.add_option("-t","--tacacs", action="store_true", dest="tacacs", help="The management account is a tacacs one")
-	parser.add_option("","--no-check", action="store_true", dest="nocheck", help="No proof check")
-	parser.add_option("-u","--showuser", action="store_true", dest="showusr", help="Show user mode")
-	parser.add_option("-s","--simulate", action="store_true", dest="simu", help="Simulation mode")
-	parser.add_option("-r","--shrun", action="store_true", dest="showrun", help="[EXPERIMENTAL] Show Run")
-	parser.add_option("-a","--aaa", action="store_true", dest="aaa", help="[EXPERIMENTAL] Change AAA model")
-	parser.add_option("-p","--ntp-server", action="append", dest="ntp", help="[EXPERIMENTAL] Change ntp servers")
+	parser.add_option("-d","--debug", action="store_true", dest="debug", help="Debug mode : verbose and extra logs")
+        #parser.add_option_group(group)
+        group = OptionGroup(parser, "Password change mode","Mode to edit the local admin account of a router within SSH.")
+	group.add_option("-f", "--hostfile", action="store", dest="file", metavar="FILE", help="Remote hosts file.")
+	group.add_option("-c","--commands", action="store", dest="commandfile", metavar="FILE", help="Commands file")
+	group.add_option("-n","--newuser", action="store_true", dest="newusr", help="Add user mode")
+	group.add_option("-t","--tacacs", action="store_true", dest="tacacs", help="The management account is a tacacs one")
+        group.add_option("-s","--simulate", action="store_true", dest="simu", help="Simulation mode")
+        group.add_option("-a","--aaa", action="store_true", dest="aaa", help="[EXPERIMENTAL] Change AAA model")
+        group.add_option("--no-check", action="store_true", dest="nocheck", help="No proof check")
+        parser.add_option_group(group)
+        group = OptionGroup(parser, "User list mode","Mode to retrieve the local users configured in a router")
+        group.add_option("-u","--showuser", action="store_true", dest="showusr", help="Show user mode")
+        parser.add_option_group(group)
+        group = OptionGroup(parser, "Show run mode","Mode to retrieve the whole running configuration a router")
+	group.add_option("-r","--shrun", action="store_true", dest="showrun", help="[EXPERIMENTAL] Show Run")
+        parser.add_option_group(group)
+        group = OptionGroup(parser, "NTP change mode","Mode to update the ntp servers set in a router")
+	group.add_option("-p","--ntp-server", action="append", dest="ntp", help="[EXPERIMENTAL] Change ntp servers")
+        parser.add_option_group(group)
 	return parser
 
 #===============================================================================
@@ -554,23 +564,40 @@ def process_args():
 #===============================================================================
 def opts_check(parser,hosts,opts):
 
+# --- not file mode and no argument
 	if len(hosts) < 1 and opts.file is None:
-		parser.error("incorrect number of arguments")
-	
+		parser.error("### Incorrect number of arguments ###")
+# --- various warnings
 	if opts.debug:
-		print\
-		"################################################################################\n# Beware that in debug mode, logfiles may contain sensible data like passwords.#\n# Erase them after use : rm -rf log                                            #\n################################################################################\n"
+		print \
+"################################################################################\n\
+# Beware that in debug mode, logfiles may contain sensible data like passwords.#\n\
+# Erase them after use : rm -rf log                                            #\n\
+################################################################################\n"
 		
 	if opts.commandfile:
-		print "#### Use this mode at your own risk : I don't check the commands, so the command file has to be safe and clean. Confirm :\n"
+		print \
+"###############################################################################\n\
+# Use this mode at your own risk :                                            #\n\
+# I don't check the commands, so the command file has to be safe and clean.   #\n\
+###############################################################################\n\
+>> Confirm :"
 		ret = raw_input("Yes / No\n")
 		res = re.match("Y|y",ret)
 		if res == None:
 			sys.exit(1)
 
-	#if options.ntp and options.b:
-	#	parser.error("options -a and -b are mutually exclusive")
-		
+# --- check triggered options
+        passmode_trig = opts.file or opts.commandfile or opts.newusr or opts.tacacs or opts.simu or opts.aaa or opts.simu
+        shusrmode_trig = opts.showusr
+        shrunmode_trig = opts.showrun
+        ntpmode_trig = opts.ntp
+        if (
+        (passmode_trig and (shusrmode_trig or shrunmode_trig or ntpmode_trig)) or
+        (shusrmode_trig and (shrunmode_trig or ntpmode_trig)) or
+        (shrunmode_trig and ntpmode_trig)
+        ):
+          parser.error("Given options are mutually exclusive - check HELP\n")
 	return opts
 
 #==============================================================================#
