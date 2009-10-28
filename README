@@ -1,0 +1,87 @@
+2009-10-19  (0.51) Jean-Christophe Baptiste <jc@phocean.net>
+
+* ciscoremote.py : options sanity check and reorganize help display
+
+2009-10-19  (0.50) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py, sshclass.py : add debug mode, ssh log files are created only when required, to preserve passwords
+ * a lot of code cleanup
+
+2009-10-13  (0.42-isis-a) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciremote.py : add enable command, just for isis purpose
+
+2009-10-13  (0.42) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : minor improvments, typo in conf t log
+ 
+2009-10-12  (0.41) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : in case of tacacs, it is better to make the connection tests with the management account
+ * ciscoremote.py : improve options parser
+
+2009-10-06  (0.40) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoclass.py : add prompt for config mode (issue with long commands)
+ * ciscoclass.py / ciscoremote.py : implement AAA config
+ * ciscoclass.py / sshclass.py : add destructors (cf doc pexpect)
+ * * : various minor improvments
+
+2009-09-23  (0.30) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * split the monolithic file into modules : sshclass.py, ciscoclass.py
+ * ciscoremote.py : 'do show username'
+ * ciscoremote.py : remove useless time in HostError log / also forgot some close()
+
+2009-09-15  (0.20) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : cosmetic changes, tested OK for merging with master
+
+2009-09-15  (0.18) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : a lot of fixes and code cleanup : to be continued
+ * ciscoremote.py : connect function : remove one useless connection
+ * ciscoremote.py : cisco.ena : correct some bug of implementation of pexpect and make it simpler
+
+2009-09-15  (0.17) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : class SshConn : handle logging when there are multiple concurrent connections
+ * ciscoremote.py : add comments / improve readability of the code
+
+2009-09-01  (0.16) Jean-Christophe Baptiste <jc@phocean.net>
+
+ * ciscoremote.py : changepass() : fix a wrong number of argument in log.write operation
+ * ciscoremote.py : cisco_ssh object / ena_change attribute : now handles the case where the user is directly logged in enable mode (depends on the aaa configuration, tacacs, etc.)
+
+2009-06-24  (0.15) Jean-Christophe Baptiste <jc@phocean.net>
+
+  ∗ ciscoremote.py : better check method of the return value from the connect function (isinstance)
+  ∗ ciscoremote.py : simulation mode implies verbose
+  ∗ ciscoremote.py : minor cosmetic changes
+
+2009-05-20  (0.1) Jean-Christophe Baptiste <jc@phocean.net>
+
+  ∗ changelog : create this file
+
+""" TO DO
+* multiprocessing
+* gestion fichier mots de passe
+* write the doc !
+* test sync dev
+* install script
+"""
+
+Know issues :
+
+106 : wrong username
+117 : interactive
+self.error(ena) et self.error(unexp_ena) : necessary ?
+245 : error not catched
+257 : remake old_password function
+266 : return user lines (stat)
+275 : show run to extend
+522 : comment
+630 : errors
+861 : comment
+615+ : compact error code
+444 : cleanup the code with useless if statements for options
