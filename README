@@ -1,87 +1,109 @@
-2009-10-19  (0.51) Jean-Christophe Baptiste <jc@phocean.net>
+  Description
+  -----------
 
-* ciscoremote.py : options sanity check and reorganize help display
+  Netios is a little tool aimed to help network administrators to administrate a large number of Cisco network devices.
+  Providing it with a list of equipments, it connects within SSH to remotly apply IOS commands.
 
-2009-10-19  (0.50) Jean-Christophe Baptiste <jc@phocean.net>
+  It can automatically :
+    - retrieve and export in a CSV file the list of local users
+    - update the local user, the enable password
+    - change NTP settings
+    - execute a file of customed IOS commands
 
- * ciscoremote.py, sshclass.py : add debug mode, ssh log files are created only when required, to preserve passwords
- * a lot of code cleanup
+  It can read the targets from the command line or from a text file.
 
-2009-10-13  (0.42-isis-a) Jean-Christophe Baptiste <jc@phocean.net>
 
- * ciremote.py : add enable command, just for isis purpose
+  License
+  -------
+  Netios is distributed under GNU license. See COPYING for more details.
 
-2009-10-13  (0.42) Jean-Christophe Baptiste <jc@phocean.net>
+  For commercial usage please contact: jc@phocean.com
+       
+           
+  Requirements
+  ------------
 
- * ciscoremote.py : minor improvments, typo in conf t log
- 
-2009-10-12  (0.41) Jean-Christophe Baptiste <jc@phocean.net>
+  - A Python compiler (tested with python 2.6) with basic modules
 
- * ciscoremote.py : in case of tacacs, it is better to make the connection tests with the management account
- * ciscoremote.py : improve options parser
+  - Python modules : pexpect, datetime, getpass
 
-2009-10-06  (0.40) Jean-Christophe Baptiste <jc@phocean.net>
 
- * ciscoclass.py : add prompt for config mode (issue with long commands)
- * ciscoclass.py / ciscoremote.py : implement AAA config
- * ciscoclass.py / sshclass.py : add destructors (cf doc pexpect)
- * * : various minor improvments
+  Supported platforms
+  -------------------
 
-2009-09-23  (0.30) Jean-Christophe Baptiste <jc@phocean.net>
+  The tool has been succesefully compiled and tested under the following platforms:
 
- * split the monolithic file into modules : sshclass.py, ciscoclass.py
- * ciscoremote.py : 'do show username'
- * ciscoremote.py : remove useless time in HostError log / also forgot some close()
+    Linux 2.6.x
+    
+    But it should work on any platform with python support : FreeBSD, Solaris, OpenBSD, NetBSD, Windows, MacOS
 
-2009-09-15  (0.20) Jean-Christophe Baptiste <jc@phocean.net>
 
- * ciscoremote.py : cosmetic changes, tested OK for merging with master
+  Platforms on which it is able to operate
+  ----------------------------------------
 
-2009-09-15  (0.18) Jean-Christophe Baptiste <jc@phocean.net>
+  Netios was developped to administrate Cisco routers and switches. It has been tester on about 200 routers, switches and wireless access-points, with various IOS versions.
+  It still requires more testing, but it is supposed to work on any platform with an SSH access configured.
 
- * ciscoremote.py : a lot of fixes and code cleanup : to be continued
- * ciscoremote.py : connect function : remove one useless connection
- * ciscoremote.py : cisco.ena : correct some bug of implementation of pexpect and make it simpler
+  For now, it is aimed to work only with Cisco and there is no warranty about what could happen with another SSH platform.
 
-2009-09-15  (0.17) Jean-Christophe Baptiste <jc@phocean.net>
 
- * ciscoremote.py : class SshConn : handle logging when there are multiple concurrent connections
- * ciscoremote.py : add comments / improve readability of the code
+  How to install
+  ---------------
 
-2009-09-01  (0.16) Jean-Christophe Baptiste <jc@phocean.net>
+    tar xvfz netios-{release}.tar.gz
+    cd netios-{release}
+    python setup.py install
 
- * ciscoremote.py : changepass() : fix a wrong number of argument in log.write operation
- * ciscoremote.py : cisco_ssh object / ena_change attribute : now handles the case where the user is directly logged in enable mode (depends on the aaa configuration, tacacs, etc.)
 
-2009-06-24  (0.15) Jean-Christophe Baptiste <jc@phocean.net>
+  How to use:
+  -----------
 
-  ∗ ciscoremote.py : better check method of the return value from the connect function (isinstance)
-  ∗ ciscoremote.py : simulation mode implies verbose
-  ∗ ciscoremote.py : minor cosmetic changes
+  See manual for details or use the -h command line to list available options.
 
-2009-05-20  (0.1) Jean-Christophe Baptiste <jc@phocean.net>
 
-  ∗ changelog : create this file
+  Architecture
+  ------------
 
-""" TO DO
-* multiprocessing
-* gestion fichier mots de passe
-* write the doc !
-* test sync dev
-* install script
-"""
+  The Netios components are :
+   - a run script, netios, as the user interface
+   - a ssh class, based on pexpect for taking care of the ssh connection
+   - a cisco class, inherited from the ssh class, adding cisco attributes like specific commands, workarounds, etc.
 
-Know issues :
 
-106 : wrong username
-117 : interactive
-self.error(ena) et self.error(unexp_ena) : necessary ?
-245 : error not catched
-257 : remake old_password function
-266 : return user lines (stat)
-275 : show run to extend
-522 : comment
-630 : errors
-861 : comment
-615+ : compact error code
-444 : cleanup the code with useless if statements for options
+  Docs & Updates
+  --------------
+
+  http://www.phocean.net
+
+
+  Ideas / To do list
+  ------------------
+
+  * implement multiprocessing
+  * take several passwords as input
+  * write the doc using pydoc
+
+
+  Know issues
+  -----------
+
+  106 : wrong username
+  117 : interactive
+  self.error(ena) et self.error(unexp_ena) : necessary ?
+  245 : error not catched
+  257 : remake old_password function
+  266 : return user lines (stat)
+  275 : show run to extend
+  522 : comment
+  630 : errors
+  861 : comment
+  615+ : compact error code
+  444 : cleanup the code with useless if statements for options
+
+
+  Where to mail bugs/questions/ideas/patches/fixes:
+  ------------------------------------------------
+
+  Jean-Christophe Baptiste <jc@phocean.net>
+
+--- END ---

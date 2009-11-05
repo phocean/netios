@@ -2,18 +2,15 @@
 # coding=UTF-8
 
 #===============================================================================
-#    Sshclass is a module to be used with Netios.
+#    Sshclass is a module to be used with CiscoRemote.
 #    It is the interface based on Pexpect (http://pexpect.sourceforge.net/pexpect.html)
 #    that handles the SSH connection process.
 #
-#    Netios is a tool to mass configure a park of cisco devices.
+#    CiscoRemote is a tool to mass configure a park of cisco devices.
 #    Its primary feature is password updating, but it can be extended if
 #    you provide it with a file containing any cisco command you wish.
 #    Copyright (C) 2009  Jean-Christophe Baptiste
 #    (jc@phocean.net, http://www.phocean.net)
-#
-#    All the credits go to the Pexpect developpers, which is a great module.
-#    Plese check http://pexpect.sourceforge.net/pexpect.html
 # 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -132,8 +129,7 @@ class sshConn:
 			elif i == 3:
 	# --- wrong username
 				return (self.error('user'))
-        # --- deactivate echo
-			self.ssh.setecho("False")
+			self.ssh.setecho(False)
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')

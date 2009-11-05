@@ -1,3 +1,9 @@
+2009-10-19  (0.60) Jean-Christophe Baptiste <jc@phocean.net>
+
+* to anticipate any right issue, rename the project as "Netios"
+* netios.py : optimize error and file handling
+* ciscoclass.py : implement show run
+
 2009-10-19  (0.51) Jean-Christophe Baptiste <jc@phocean.net>
 
 * ciscoremote.py : options sanity check and reorganize help display

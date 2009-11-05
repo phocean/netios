@@ -2,14 +2,17 @@
 # coding=UTF-8
 
 #===============================================================================
-#    Ciscoclass is the module containing the Cisco object for CiscoRemote
+#    Ciscoclass is the module containing the Cisco object for Netios
 #    Its attributes contain some selected IOS commands useful to the program.
 #
-#    CiscoRemote is a tool to mass configure a park of cisco devices.
+#    Netios is a tool to mass configure a park of cisco devices.
 #    Its primary feature is password updating, but it can be extended if
 #    you provide it with a file containing any cisco command you wish.
 #    Copyright (C) 2009  Jean-Christophe Baptiste
 #    (jc@phocean.net, http://www.phocean.net)
+#
+#    All the credits go to the Pexpect developpers, which is a great module.
+#    Plese check http://pexpect.sourceforge.net/pexpect.html
 # 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -312,12 +315,12 @@ class ciscoSsh(sshConn):
 # --- show run
 	def sh_run(self):
 		try:	
+			self.ssh.setecho(False)
 			self.ssh.sendline ("show run")
 			self.ssh.expect ("$.*"+self.prompt)
 			res=self.ssh.before
-			userlines = re.split("\n+", res)
-			print ("%s"%userlines)
-			return (userlines)
+			config = re.split("\n+", res)
+			return (config)
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
 		except pexpect.EOF:

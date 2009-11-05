@@ -1,2 +1,2 @@
-include ciscoremte README
+include ciscoremote README
 recursive-include package
