@@ -1,2 +1,2 @@
-include ciscoremote README
+include netios README
 recursive-include package

@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: netios
+Version: 0.60
+Summary: SSH remote configuration tool
+Home-page: http://www.phocean.net
+Author: Jean-Christophe Baptiste
+Author-email: jc@phocean.net
+License: UNKNOWN
+Description: SSH configuration tool, with functions like mass password edition
+Platform: UNKNOWN

@@ -9,7 +9,6 @@
     - update the local user, the enable password
     - change NTP settings
     - execute a file of customed IOS commands
-    - retrieve configuration files
 
   It can read the targets from the command line or from a text file.
 
@@ -80,15 +79,26 @@
   Ideas / To do list
   ------------------
 
-  * handle multiprocessing
+  * implement multiprocessing
   * take several passwords as input
-  * make use of pydoc
+  * write the doc using pydoc
 
 
   Know issues
   -----------
 
-  ...
+  106 : wrong username
+  117 : interactive
+  self.error(ena) et self.error(unexp_ena) : necessary ?
+  245 : error not catched
+  257 : remake old_password function
+  266 : return user lines (stat)
+  275 : show run to extend
+  522 : comment
+  630 : errors
+  861 : comment
+  615+ : compact error code
+  444 : cleanup the code with useless if statements for options
 
 
   Where to mail bugs/questions/ideas/patches/fixes:
