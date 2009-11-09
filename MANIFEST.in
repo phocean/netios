@@ -1,2 +1,2 @@
-include netios README
+include netios README CHANGELOG COPYING
 recursive-include package
