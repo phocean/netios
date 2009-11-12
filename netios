@@ -418,7 +418,10 @@ def ntpserver(host,user,sshpass,enapass,log, startTime,verb,newntpsrv, debug):
 		- write memory and exit.
 	Return 0
 	"""
+	print 'starting child process with id: ', os.getpid()
+	print 'parent process:', os.getppid()
 	# --- open a connection
+	error = None
 	logincount = 0
 	cisco=connect(host,user,sshpass,enapass, log, startTime,verb, logincount, debug)
 	if isinstance(cisco,ciscoSsh) != True:
@@ -440,19 +443,19 @@ def ntpserver(host,user,sshpass,enapass,log, startTime,verb,newntpsrv, debug):
 	if ntpsrv:
 		if verb:
 			print "<-- %s -->"%host
-		flist = fileopen ("out/%s/ntp.log"%startTime,"a")
-		flist.write ("%s"%host)
+		#flist = fileopen ("out/%s/ntp.log"%startTime,"a")
+		#flist.write ("%s"%host)
 		for i in ntpsrv:
 			print "%s"%i
-			flist.write (";%s"%i)
+			#flist.write (";%s"%i)
 		ret = cisco.no_ntp_server(ntpsrv)
 		if ret != 0:
 			log.write ("%sSkip %s\n"%(time(1),host))
 			error = fileopen ("log/%s/ntpserver.log"%startTime,"w+")
 			error.write ("%s\n"%host)
 			print ("Command no 'ntp server' failed with %s"%i)
-		flist.write ("\n")
-		flist.close()
+		#flist.write ("\n")
+		#flist.close()
 	else :
 		print "### Empty string returned !"
 		log.write ("%sEmpty string returned instead of ntp server list\n"%time(1))
@@ -581,6 +584,19 @@ def f_hosts_end(log):
 	print "### All hosts parsed"
 	log.write ("%s### All host parsed ##\n"%time(1))
 	return 0
+
+def worker_ntp(input,output,user,sshpass,enapass,log,startTime,verb,ntp,debug):
+	for func in iter(input.get, 'STOP'):
+		# clean up
+		func=line_cleanup(func)
+		print ">>> Host %s"%func
+		ret=ntpserver(func,user,sshpass,enapass,log,startTime,verb,ntp,debug)
+		#if ret != 0:
+		#	f_error_skip(func,log)
+		#	continue
+		output.put(ret)
+		
+
 
 def process_args():
 	"""
@@ -740,14 +756,42 @@ def main():
 		if opts.file:
 			hosts = fileopen("%s"%opts.file,"r")
 		(user,sshpass,enapass)=credentials()
+
+		NUMBER_OF_PROCESSES = len(hosts)
+		# Create queues
+		task_queue = Queue()
+		done_queue = Queue()
+
+		#submit tasks
 		for host in hosts:
-			# clean up
-			host=line_cleanup(host)
-			print ">>> Host %s"%host
-			ret=ntpserver(host,user,sshpass,enapass,log,startTime,opts.verb, opts.ntp, opts.debug)
-			if ret != 0:
-				f_error_skip(host,log)
-				continue
+			task_queue.put(host)
+
+		#Start worker processes
+		for i in range(NUMBER_OF_PROCESSES):
+			Process(target=worker_ntp, args=(task_queue, done_queue,user,sshpass,enapass,log,startTime,opts.verb, opts.ntp,opts.debug)).start()
+
+		# Get and print results
+		print 'Unordered results:'
+		for i in range(len(hosts)):
+			print '\t', done_queue.get().query
+
+		# Tell child processes to stop
+		for i in range(NUMBER_OF_PROCESSES):
+			task_queue.put('STOP')
+			print "Stopping Process #%s" % i
+
+
+
+
+		
+		#for host in hosts:
+			## clean up
+			#host=line_cleanup(host)
+			#print ">>> Host %s"%host
+			#ret=ntpserver(host,user,sshpass,enapass,log,startTime,opts.verb, opts.ntp, opts.debug)
+			#if ret != 0:
+				#f_error_skip(host,log)
+				#continue
 		if opts.file:
 			fileclose(hosts)
 		f_hosts_end(log)
