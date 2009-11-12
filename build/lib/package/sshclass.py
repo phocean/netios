@@ -2,15 +2,18 @@
 # coding=UTF-8
 
 #===============================================================================
-#    Sshclass is a module to be used with CiscoRemote.
+#    Sshclass is a module to be used with Netios.
 #    It is the interface based on Pexpect (http://pexpect.sourceforge.net/pexpect.html)
 #    that handles the SSH connection process.
 #
-#    CiscoRemote is a tool to mass configure a park of cisco devices.
+#    Netios is a tool to mass configure a park of cisco devices.
 #    Its primary feature is password updating, but it can be extended if
 #    you provide it with a file containing any cisco command you wish.
 #    Copyright (C) 2009  Jean-Christophe Baptiste
 #    (jc@phocean.net, http://www.phocean.net)
+#
+#    All the credits go to the Pexpect developpers, which is a great module.
+#    Plese check http://pexpect.sourceforge.net/pexpect.html
 # 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -98,7 +101,7 @@ class sshConn:
 					fout = file ("log/%s/%s-%s.log"%(self.startTime, self.host, time(0)),"w")
 				self.ssh.logfile = fout
 			print "~ SSH session n°%d"%self.logincount
-			i = self.ssh.expect (["assword:", r"yes/no"],timeout=7)
+			i = self.ssh.expect (["assword:", r"yes/no"],timeout=80)
 	# --- prompted for password
 			if i==0:
 				if verb:
@@ -112,7 +115,7 @@ class sshConn:
 				self.ssh.expect("assword", timeout=7)
 				self.ssh.sendline(self.password)
 	# --- prompt after password input : denied or choice for a terminal type
-			i = self.ssh.expect (['Permission denied', 'Terminal type', self.prompt, 'assword'],timeout=15)
+			i = self.ssh.expect (['Permission denied', 'Terminal type', self.prompt, 'assword'],timeout=60)
 	# --- permission denied : call to error function
 			if i == 0:
 				return (self.error('denied'))
@@ -129,7 +132,8 @@ class sshConn:
 			elif i == 3:
 	# --- wrong username
 				return (self.error('user'))
-			self.ssh.setecho(False)
+        # --- deactivate echo
+			self.ssh.setecho("False")
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
