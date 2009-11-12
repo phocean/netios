@@ -527,7 +527,7 @@ def dir_check(path):
 #===============================================================================
 # host error log function
 #===============================================================================
-def f_error_skip(host,log):
+def f_error_skip(host,log,startTime):
 	log.write ("%sSkip %s\n"%(time(1),host))
 	# --- Log file for hosts in error
 	error = fileopen ("log/%s/HostError.log"%startTime,"w+")
@@ -659,7 +659,7 @@ def main():
 			print ">>> Working on host %s"%host
 			ret = custom(host,user,sshpass,enapass,opts.commandfile,log,startTime,opts.verb,opts.simu, opts.debug)
 			if ret != 0:
-				f_error_skip(host,log)
+				f_error_skip(host,log,startTime)
 				continue
 		if opts.file:
 			fileclose(hosts)
@@ -678,7 +678,7 @@ def main():
 			print ">>> Host %s"%host
 			ret=userlist(host,user,sshpass,enapass,log,startTime,opts.verb, opts.debug)
 			if ret != 0:
-				f_error_skip(host,log)
+				f_error_skip(host,log,startTime)
 				continue
 		if opts.file:
 			fileclose(hosts)
@@ -697,7 +697,7 @@ def main():
 			print ">>> Host %s"%host
 			ret=show_run(host,user,sshpass,enapass,log,startTime,opts.verb, opts.debug)
 			if ret != 0:
-				f_error_skip(host,log)
+				f_error_skip(host,log,startTime)
 				continue
 		if opts.file:
 			fileclose(hosts)
@@ -716,7 +716,7 @@ def main():
 			print ">>> Host %s"%host
 			ret=ntpserver(host,user,sshpass,enapass,log,startTime,opts.verb, opts.ntp, opts.debug)
 			if ret != 0:
-				f_error_skip(host,log)
+				f_error_skip(host,log,startTime)
 				continue
 		if opts.file:
 			fileclose(hosts)
@@ -744,7 +744,7 @@ def main():
 			print ">>> Working on host %s"%host
 			ret = changepass(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,log,startTime,opts.verb,opts.simu, opts.aaa, opts.tacacs, opts.nocheck, opts.debug)
 			if ret != 0:
-				f_error_skip(host,log)
+				f_error_skip(host,log,startTime)
 				continue
 		if opts.file:
 			fileclose(hosts)
