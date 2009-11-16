@@ -1,6 +1,10 @@
-2009-11-07  (0.61) Jean-Christophe Baptiste <jc@phocean.net>
+2009-11-16  (0.70) Jean-Christophe Baptiste <jc@phocean.net>
 
+* implement multiprocessing
 * improve code documentation
+* clean up UI
+* reduce useless logging
+* netios.py : bug : missing startTime parameter in f_skip_error and f_command functions
 
 2009-10-19  (0.60) Jean-Christophe Baptiste <jc@phocean.net>
 

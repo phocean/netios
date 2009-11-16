@@ -35,11 +35,11 @@ class ciscoSsh(sshConn):
 	This class is inherited from the sshConn class of sshclass
 	It is the interface to handle a Cisco router
 	"""
-	def __init__(self,host,user,password,enapass,log,startTime,logincount, debug):
+	def __init__(self,host,user,password,enapass,startTime,logincount, debug):
 		"""
 		Initialize the cisco instance and fix the prompts (for <enable> and <configure terminal> modes)
 		"""
-		sshConn.__init__(self, host, user, password, log,startTime,logincount, debug)
+		sshConn.__init__(self, host, user, password,startTime,logincount, debug)
 		self.enapass=enapass
 		self.prompt="\$|\%|\#|\>"
 		self.confprompt="\(config\)\#|\(config-line\)\#"
@@ -52,14 +52,14 @@ class ciscoSsh(sshConn):
 		self.ssh.sendline ('enable')
 		try:
 			i = self.ssh.expect([r'assword',self.prompt])
-		# --- already in enable mode (ex : tacacs)
-		# --- if self.ssh.expect(['>','#'], timeout=2) == 1:
+		# already in enable mode (ex : tacacs)
+		# if self.ssh.expect(['>','#'], timeout=2) == 1:
 		except pexpect.TIMEOUT:
 			i = self.ssh.expect(self.prompt)
 			if i == 0:
 				#print "already tacacs"
 				return 0
-		# --- no prompt, serious timeout issue
+		# no prompt, serious timeout issue
 			else:
 				self.error(timeout)
 		except pexpect.EOF:
@@ -67,9 +67,9 @@ class ciscoSsh(sshConn):
 		except KeyboardInterrupt:
 			self.error ('keyboard')
 		if i == 0:
-			# --- send enable password
+			# send enable password
 			self.ssh.sendline (self.enapass)
-			# --- should be enabled
+			# should be enabled
 			try:
 				self.ssh.expect(self.prompt)
 			except pexpect.TIMEOUT:
@@ -81,7 +81,7 @@ class ciscoSsh(sshConn):
 		elif i == 1:
 			#print "already enabled (tacacs)"
 			pass
-		# --- define terminal length
+		# define terminal length
 		self.ssh.sendline ('terminal length 0')
 		try:
 			self.ssh.expect(self.prompt)
@@ -91,7 +91,7 @@ class ciscoSsh(sshConn):
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
-		# --- define terminal width
+		# define terminal width
 		self.ssh.sendline ('terminal width 80')
 		try:
 			self.ssh.expect(self.prompt)
@@ -101,7 +101,7 @@ class ciscoSsh(sshConn):
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
-		# --- return OK status
+		# return OK status
 		return 0
 
 	def conft (self):
@@ -127,12 +127,12 @@ class ciscoSsh(sshConn):
 		"""
 		self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
 		try:
-			i = self.ssh.expect ([self.confprompt,"ERROR: Can not have both a user password and a user secret"])
+			i = self.ssh.expect ([self.confprompt,"\t\t\t\tERROR: Can not have both a user password and a user secret"])
 			if i == 0:
-			# --- all fine : return OK
+			# all fine : return OK
 				return 0
 			elif i == 1:
-				# --- erase old password style user
+				# erase old password style user
 				self.ssh.sendline ("no username %s"%newuser)
 				try:
 					self.ssh.expect (self.confprompt)
@@ -142,7 +142,7 @@ class ciscoSsh(sshConn):
 					self.error ('eof')
 				except KeyboardInterrupt:
 					self.error ('keyboard')
-				# --- send again the "secret" command
+				# send again the "secret" command
 				self.ssh.sendline ("username %s secret 0 %s"%(newuser,password))
 				try:
 					self.ssh.expect (self.confprompt)
@@ -152,7 +152,7 @@ class ciscoSsh(sshConn):
 					self.error ('eof')
 				except KeyboardInterrupt:
 					self.error ('keyboard')
-				# --- all fine now : return OK
+				# all fine now : return OK
 				return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -241,30 +241,30 @@ class ciscoSsh(sshConn):
 		Return the table of local users
 		"""
 		try:
-			# --- filter show run for user names
+			# filter show run for user names
 			self.ssh.sendline ("show run | include username")
-			# --- expecting some characters after the current prompt
+			# expecting some characters after the current prompt
 			self.ssh.expect ("$.*"+self.prompt)
-			# --- grab the content
+			# grab the content
 			res=self.ssh.before
-			# --- split the string into a table
+			# split the string into a table
 			userlines = re.split("\n+", res)
-			# --- parse the table to clean up garbage (empty lines or eventually not filtered input)
+			# parse the table to clean up garbage (empty lines or eventually not filtered input)
 			nblines = len(userlines)
 			i=0
 			while i < nblines:
 				match = re.match("^username",userlines[i])
-					# --- delete the table entry if the line does not start with username
+					# delete the table entry if the line does not start with username
 				if not match:
 					del(userlines[i])
 					nblines = nblines-1
 					i = i-1
-				# --- extract the user name
+				# extract the user name
 				else :
 					res = re.match(r"(\w+) (\w+)",userlines[i])
 					userlines[i]=res.group(2)
 				i=i+1
-			# --- return the table of users
+			# return the table of users
 			return (userlines)
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
@@ -279,30 +279,30 @@ class ciscoSsh(sshConn):
 		Return the table of ntp servers
 		"""
 		try:
-			# --- filter show run for user names
+			# filter show run for user names
 			self.ssh.sendline ("show run | include ntp server")
-			# --- expecting some characters after the current prompt
+			# expecting some characters after the current prompt
 			self.ssh.expect ("$.*"+self.prompt)
-			# --- grab the content
+			# grab the content
 			res=self.ssh.before
-			# --- split the string into a table
+			# split the string into a table
 			ntpserv = re.split("\n+", res)
-			# --- parse the table to clean up garbage (empty lines or eventually not filtered input)
+			# parse the table to clean up garbage (empty lines or eventually not filtered input)
 			nblines = len(ntpserv)
 			i=0
 			while i < nblines:
 				match = re.match("^ntp server",ntpserv[i])
-				# --- delete the table entry if the line does not start with "ntp server"
+				# delete the table entry if the line does not start with "ntp server"
 				if not match:
 					del(ntpserv[i])
 					nblines = nblines-1
 					i = i-1
-				# --- extract the ntp servers IP
+				# extract the ntp servers IP
 				else :
 					res = re.match(r"(\w+) (\w+) ((\d+.){3}\d+)",ntpserv[i])
 					ntpserv[i]=res.group(3)
 				i=i+1
-			# --- return the table
+			# return the table
 			return (ntpserv)
 		except pexpect.TIMEOUT:
 			self.error ('timeout')

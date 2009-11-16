@@ -50,7 +50,7 @@ class sshConn:
 	This class handles a generic SSH connection, using the Pexpect library
 	"""
 	
-	def __init__ (self,host,user,password,log,startTime,logincount, debug):
+	def __init__ (self,host,user,password,startTime,logincount, debug):
 		"""
 		Initialize the sshConn instance and fix a generic prompt that is supposed to work with most SSH servers
 		"""
@@ -59,10 +59,11 @@ class sshConn:
 		self.password=password
 		self.prompt="\$|\%|\#|\>"
 		self.startTime=startTime
-		self.log=log
 		self.ssh=None
 		self.logincount=logincount
 		self.debug=debug
+		self.ppid=os.getppid()
+		self.pid=os.getpid()
 
 	def error (self,type):
 		"""
@@ -70,28 +71,20 @@ class sshConn:
 		Return 1
 		"""
 		if type == 'timeout':
-			print "### SSH Timeout : check that the SSH service is on"
-			self.log.write ("%sCould not open SSH socket\n"%time(1))
+			return "### SSH Timeout : is SSH on ?"
 		elif type == 'keyboardinterrupt':
-			print "### User keyboard interrupt"
-			self.log.write ("%sUser keybord interrupt\n"%time(1))
+			return "### User keyboard interrupt"
 		elif type == "eof":
-			print "### The socket has been closed or interrupted on the remote host !"
-			self.log.write ("%sConnection closed by peer\n"%time(1))
+			return "### Connection refused by the remote host !"
 		elif type == "denied":
-			print '### Permission denied on host. Can\'t login'
-			self.log.write ("%sPermission denied on host. Can\'t login\n"%time(1))
+			return '### Permission denied on host. Can\'t login'
 		elif type == 'user':
-			print '### Wrong username or/and password !'
-			self.log.write ("%sWrong username or/and password\n"%time(1))
+			return '### Wrong username or/and password !'
 		elif type == 'ena':
-			print "### Access Denied : wrong Enable password"
-			self.log.write ("%sWrong Enable password\n"%time(1))
+			return "### Access Denied : wrong Enable password"
 		elif type == 'unexp_ena':
-			print "### Can't enter Enable mode : unexpected answer"
-			self.log.write ("%sUnexpeted answer while entering Enable mode\n"%time(1))
+			return "### Can't enter Enable mode : unexpected answer"
 		self.ssh.kill(0)
-		return 1
 
 	def login (self,verb):
 		"""
@@ -102,52 +95,53 @@ class sshConn:
 			self.ssh = pexpect.spawn ('ssh %s@%s'%(self.user,self.host))
 			#self.ssh.logfile = sys.stdout
 			if self.debug is True:
-				if self.logincount > 0:
-					fout = file ("log/%s/%s-%s.log.%d"%(self.startTime,self.host,time(0), self.logincount),"w")
-				else:
-					fout = file ("log/%s/%s-%s.log"%(self.startTime, self.host, time(0)),"w")
+				if os.path.exists('log') == False:
+					os.mkdir('log')
+				if os.path.exists("log/%s"%self.startTime) == False:
+					os.mkdir("log/%s"%self.startTime)
+				fout = file ("log/%s/%s-%s.%d.log"%(self.startTime,self.host,time(0), self.logincount),"w")
 				self.ssh.logfile = fout
-			print "~ SSH session n°%d"%self.logincount
+			#print "~ SSH session n°%d"%self.logincount
 			i = self.ssh.expect (["assword:", r"yes/no"],timeout=7)
-			# --- prompted for password
+			# prompted for password
 			if i==0:
 				if verb:
-					print ">>> Authenticating"
+					print "[%d:%d]\t%s\tAuthenticating"%(self.ppid,self.pid,self.host)
 				self.ssh.sendline(self.password)
 			elif i==1:
-				# --- prompted for key
+				# prompted for key
 				if verb:
-					print ">>> Key request"
+					print "[%d:%d]\t%s\tKey request"%(self.ppid,self.pid,self.host)
 				self.ssh.sendline("yes")
 				self.ssh.expect("assword", timeout=7)
 				self.ssh.sendline(self.password)
-			# --- prompt after password input : denied or choice for a terminal type
+			# prompt after password input : denied or choice for a terminal type
 			i = self.ssh.expect (['Permission denied', 'Terminal type', self.prompt, 'assword'],timeout=15)
-			# --- permission denied : call to error function
+			# permission denied : call to error function
 			if i == 0:
 				return (self.error('denied'))
 			elif i == 1:
-				# --- send terminal type
+				# send terminal type
 				if verb:
-					print '>>> SSH Login OK... need to send terminal type.'
+					print "[%d:%d]\t%s\tSSH Login OK... need to send terminal type."%(self.ppid,self.pid,self.host)
 				self.ssh.sendline('vt100')
 				self.ssh.expect (self.prompt)
 			elif i == 2:
-			# --- login successful
+			# login successful
 				if verb:
-					print '>>> SSH Login OK.'
+					print "[%d:%d]\t%s\tSSH Login OK."%(self.ppid,self.pid,self.host)
 			elif i == 3:
-			# --- wrong username
+			# wrong username
 				return (self.error('user'))
-			# --- deactivate echo
+			# deactivate echo
 			self.ssh.setecho("False")
 			return 0
 		except pexpect.TIMEOUT:
-			self.error ('timeout')
+			return (self.error ('timeout'))
 		except pexpect.EOF:
-			self.error ('eof')
+			return (self.error ('eof'))
 		except KeyboardInterrupt:
-			self.error ('keyboard')
+			return (self.error ('keyboard'))
 
 	def interactive(self):
 		"""
@@ -158,11 +152,11 @@ class sshConn:
 			self.ssh.interact()
 			return 0
 		except pexpect.TIMEOUT:
-			self.error ('timeout')
+			return (self.error ('timeout'))
 		except pexpect.EOF:
-			self.error ('eof')
+			return (self.error ('eof'))
 		except KeyboardInterrupt:
-			self.error ('keyboard')
+			return (self.error ('keyboard'))
 
 	def ssh_close(self,ct):
 		"""
@@ -172,7 +166,7 @@ class sshConn:
 		Return 0
 		"""
 		try:
-			# --- flag indicates that end is necessary before closing (conf t)
+			# flag indicates that end is necessary before closing (conf t)
 			if ct==1 :
 				self.ssh.sendline ('end')
 				self.ssh.expect(self.prompt)
@@ -180,14 +174,15 @@ class sshConn:
 			elif ct==0 :
 				self.ssh.sendline("exit")
 			self.ssh.close()
-			#self.ssh.logfile.close()
+			if self.ssh.logfile:
+				self.ssh.logfile.close()
 			return 0
 		except pexpect.TIMEOUT:
-			self.error ('timeout')
+			return (self.error ('timeout'))
 		except pexpect.EOF:
-			self.error ('eof')
+			return (self.error ('eof'))
 		except KeyboardInterrupt:
-			self.error ('keyboard')
+			return (self.error ('keyboard'))
 
 	def __del__(self):
 		"""
