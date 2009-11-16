@@ -101,15 +101,9 @@ class sshConn:
 					os.mkdir("log/%s"%self.startTime)
 				fout = file ("log/%s/%s-%s.%d.log"%(self.startTime,self.host,time(0), self.logincount),"w")
 				self.ssh.logfile = fout
-<<<<<<< HEAD
-			print "~ SSH session n°%d"%self.logincount
-			i = self.ssh.expect (["assword:", r"yes/no"],timeout=80)
-	# --- prompted for password
-=======
 			#print "~ SSH session n°%d"%self.logincount
 			i = self.ssh.expect (["assword:", r"yes/no"],timeout=7)
 			# prompted for password
->>>>>>> dev
 			if i==0:
 				if verb:
 					print "[%d:%d]\t%s\tAuthenticating"%(self.ppid,self.pid,self.host)
@@ -121,15 +115,9 @@ class sshConn:
 				self.ssh.sendline("yes")
 				self.ssh.expect("assword", timeout=7)
 				self.ssh.sendline(self.password)
-<<<<<<< HEAD
-	# --- prompt after password input : denied or choice for a terminal type
-			i = self.ssh.expect (['Permission denied', 'Terminal type', self.prompt, 'assword'],timeout=60)
-	# --- permission denied : call to error function
-=======
 			# prompt after password input : denied or choice for a terminal type
 			i = self.ssh.expect (['Permission denied', 'Terminal type', self.prompt, 'assword'],timeout=15)
 			# permission denied : call to error function
->>>>>>> dev
 			if i == 0:
 				return (self.error('denied'))
 			elif i == 1:
