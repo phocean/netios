@@ -7,3 +7,5 @@ package/__init__.py
 package/ciscoclass.py
 package/portfinder.py
 package/sshclass.py
+test/test-proc.py
+test/test2.py
