@@ -1,0 +1,4 @@
+sh clock
+hostname router
+exit
+write mem
