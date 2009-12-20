@@ -3,9 +3,9 @@ COPYING
 README
 netios
 setup.py
-package/__init__.py
-package/ciscoclass.py
-package/portfinder.py
-package/sshclass.py
+lib/netios/__init__.py
+lib/netios/ciscoclass.py
+lib/netios/portfinder.py
+lib/netios/sshclass.py
 test/test-proc.py
 test/test2.py
