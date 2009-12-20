@@ -64,6 +64,11 @@ class sshConn:
 		self.debug=debug
 		self.ppid=os.getppid()
 		self.pid=os.getpid()
+		# should be the default setting but override them just in case
+		# you can adjust them to your will but beware of buffering issues that could lead to incomplete feedback
+		os.environ['LINES'] = "25"
+		os.environ['COLUMNS'] = "80"
+
 
 	def error (self,type):
 		"""

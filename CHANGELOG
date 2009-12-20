@@ -5,6 +5,8 @@
 * clean up UI
 * reduce useless logging
 * netios.py : bug : missing startTime parameter in f_skip_error and f_command functions
+* ciscoclass.py : handle correctly the cisco pager -- More -- so that "show run" mode should work even with large config files
+* sshclass.py : allow to override terminal size system settings (make use of the cisco pager to avoid filling the buffer)
 
 2009-10-19  (0.60) Jean-Christophe Baptiste <jc@phocean.net>
 

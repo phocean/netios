@@ -81,8 +81,10 @@ class ciscoSsh(sshConn):
 		elif i == 1:
 			#print "already enabled (tacacs)"
 			pass
-		# define terminal length
-		self.ssh.sendline ('terminal length 0')
+		# define terminal length (desactivate the cisco pager -- More --
+		# not using the pager caused some incomplete fetching probably because of the buffer getting full
+		# so for now I prefer to use the system terminal settings and handle the pager (see shrun function)
+		#self.ssh.sendline ('terminal length 0')
 		try:
 			self.ssh.expect(self.prompt)
 		except pexpect.TIMEOUT:
@@ -352,12 +354,19 @@ class ciscoSsh(sshConn):
 		so this require a workaround to clean it up, processed by netios)
 		Return a list with the lines of the running configuration
 		"""
+		res = ''
 		try:	
 			self.ssh.setecho(False)
 			self.ssh.sendline ("show run")
-			self.ssh.expect ("$.*"+self.prompt)
-			res=self.ssh.before
-			config = re.split("\n+", res)
+			i = 1
+			while i == 1:
+				i = self.ssh.expect (["$.*"+self.prompt,r"More"])
+				res += self.ssh.before
+				if i == 1:
+					# pass the cisco pager -- More --
+					self.ssh.send(" ")
+			config=re.split("\n+",res)
+			print "config :%s"%config
 			return (config)
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
