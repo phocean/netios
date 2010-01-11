@@ -366,7 +366,6 @@ class ciscoSsh(sshConn):
 					# pass the cisco pager -- More --
 					self.ssh.send(" ")
 			config=re.split("\n+",res)
-			print "config :%s"%config
 			return (config)
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
