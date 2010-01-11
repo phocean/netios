@@ -1,2 +1,3 @@
-include netios README CHANGELOG COPYING
-recursive-include lib
+include README CHANGELOG COPYING
+recursive-include lib/netios *
+prune test
