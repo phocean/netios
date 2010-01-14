@@ -1,6 +1,8 @@
-2010-01-11  (0.72) Jean-Christophe Baptiste <jc@phocean.net>
+2010-01-14  (0.72) Jean-Christophe Baptiste <jc@phocean.net>
 
 * ciscoclass.py : forgot to remove a debug print
+* ciscoclass.py : finish and fix a bunch of bugs in the show run function, format the config file properly
+* ciscoclass.py : fix the prompt regex
 
 2009-12-20  (0.71) Jean-Christophe Baptiste <jc@phocean.net>
 

@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
   name = "netios",
-  version = "0.71",
+  version = "0.72",
   description = "SSH remote configuration tool",
   author = "Jean-Christophe Baptiste",
   author_email = "jc@phocean.net",

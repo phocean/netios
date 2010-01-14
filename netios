@@ -567,7 +567,7 @@ def process_args():
 	Put down the program options
 	Return a parser object
 	"""
-	parser = OptionParser(usage="\n\t%prog [options] host1 host2 ... hostn\n OR\n\t%prog [options] -f FILE\n\n Check --help for more details", version="%prog 0.70")
+	parser = OptionParser(usage="\n\t%prog [options] host1 host2 ... hostn\n OR\n\t%prog [options] -f FILE\n\n Check --help for more details", version="%prog 0.72")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
 	parser.add_option("-d","--debug", action="store_true", dest="debug", help="Debug mode : verbose and extra logs")
 	parser.add_option("-f", "--file", action="store", dest="file", metavar="FILE", help="Remote hosts file.")
