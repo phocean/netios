@@ -132,7 +132,7 @@ def confter(cisco,verb):
 		return (1)
 	return (cisco)
 
-def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTime,verb,sim, aaa, tac, nocheck, debug):
+def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTime,verb,sim, aaa, tac, nocheck, debug, lock):
 	"""
 	Change password function :
 		- create a cisco object, opening an ssh connection to the router,
@@ -216,24 +216,36 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 		# we close connection
 		close_connect(cisco2,verb, 0)
 	# delete extra accounts
-	ret = cisco.exit()
+	ret = cisco.exit()	
 	if ret != 0 :
 		print ("[%d:%d]\t%s\t### Failed to exit cleanly the session"%(ppid,pid,host))
 		return (1)
 	userlist = cisco.show_username()
-	if verb:
+	if (verb and userlist):
 		print ("[%d:%d]\t%s\tUser list :\n\t\t\t\t%s"%(ppid,pid,host,userlist))
+	elif (verb and userlist is None):
+		print ("[%d:%d]\t%s\tNo other user"%(ppid,pid,host))
 	# configure terminal mode
 	cisco=confter(cisco,verb)
 	if isinstance(cisco,ciscoSsh) != True:
 		if verb:
 			print ("[%d:%d]\t%s\t### 'Configure terminal' failed, stopping here"%(ppid,pid,host))
 		return (1)
-	ret = cisco.delete_user(newuser,userlist)
+	if userlist:
+		ret = cisco.delete_user(newuser,userlist)
+	#test #################################################################################################################################################
+	ret = 1
 	if ret != 0 :
 		print ("[%d:%d]\t%s\t### Failed to delete users - check it manually"%(ppid,pid,host))
 		print ("[%d:%d]\t%s\tGoing to interactive mode for manual check"%(ppid,pid,host))
-		cisco.interactive()
+		#lock.acquire()
+		#print "zzz"		
+#		p = Process(target=inter, args=(cisco,lock,))
+#		p.start()
+#		p.join()
+		inter(cisco,lock)
+		#lock.release()
+		print "bof"
 		# we close connection
 		close_connect(cisco,verb, 0)
 		ret = cisco.ssh_close(0)
@@ -269,6 +281,12 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 	# we close connection
 	close_connect(cisco, verb, 0)
 	return 0
+
+def inter (cisco,lock):
+	lock.acquire()
+	print "bro"
+	cisco.interactive()
+	lock.release()
 
 def custom (host,user,sshpass,enapass,commandfile,startTime,verb,sim, debug,commands):
 	"""
@@ -383,6 +401,7 @@ def userlist(host,user,sshpass,enapass,startTime,verb, debug, lock):
 	dir_check('out')
 	dir_check('out/%s'%startTime)
 	if userlist:
+		# lock file access
 		lock.acquire()
 		flist = fileopen ("out/%s/users.log"%startTime,"a")
 		flist.write ("%s"%host)
@@ -567,7 +586,7 @@ def process_args():
 	Put down the program options
 	Return a parser object
 	"""
-	parser = OptionParser(usage="\n\t%prog [options] host1 host2 ... hostn\n OR\n\t%prog [options] -f FILE\n\n Check --help for more details", version="%prog 0.70")
+	parser = OptionParser(usage="\n\t%prog [options] host1 host2 ... hostn\n OR\n\t%prog [options] -f FILE\n\n Check --help for more details", version="%prog 0.72")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
 	parser.add_option("-d","--debug", action="store_true", dest="debug", help="Debug mode : verbose and extra logs")
 	parser.add_option("-f", "--file", action="store", dest="file", metavar="FILE", help="Remote hosts file.")
@@ -689,6 +708,7 @@ def main():
 		(user,sshpass,enapass)=credentials()
 		# create the pool of processes
 		manager = Manager()
+		# lock for file access
 		lock = manager.Lock()
 		pool = Pool(processes=opts.proc)
 		for host in hosts:
@@ -759,12 +779,15 @@ def main():
 			newuser=user
 		# create the pool of processes
 		pool = Pool(processes=opts.proc)
+		# lock for terminal access
+		manager = Manager()
+		lock = manager.Lock()
 		# -- hosts parsing
 		for host in hosts:
 			# clean up
 			host=line_cleanup(host)
 			print "[%d:%d]\t%s\tStarting process"%(ppid,pid,host)
-			ret = pool.apply_async(changepass,(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,startTime,opts.verb,opts.simu, opts.aaa, opts.tacacs, opts.nocheck, opts.debug))
+			ret = pool.apply_async(changepass,(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,startTime,opts.verb,opts.simu, opts.aaa, opts.tacacs, opts.nocheck, opts.debug,lock))
 		pool.close()
 		pool.join()
 		if opts.file:

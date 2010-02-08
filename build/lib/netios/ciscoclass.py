@@ -41,7 +41,7 @@ class ciscoSsh(sshConn):
 		"""
 		sshConn.__init__(self, host, user, password,startTime,logincount, debug)
 		self.enapass=enapass
-		self.prompt="\$|\%|\#|\>"
+		self.prompt="\S*(\$|%|#|>){1}$"
 		self.confprompt="\(config\)\#|\(config-line\)\#"
 	
 	def ena (self):
@@ -49,62 +49,27 @@ class ciscoSsh(sshConn):
 		Enter <enable> mode
 		Return 0
 		"""
-		self.ssh.sendline ('enable')
 		try:
+			self.ssh.sendline ('enable')
 			i = self.ssh.expect([r'assword',self.prompt])
-		# already in enable mode (ex : tacacs)
-		# if self.ssh.expect(['>','#'], timeout=2) == 1:
-		except pexpect.TIMEOUT:
-			i = self.ssh.expect(self.prompt)
 			if i == 0:
-				#print "already tacacs"
-				return 0
-		# no prompt, serious timeout issue
-			else:
-				self.error(timeout)
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-		if i == 0:
-			# send enable password
-			self.ssh.sendline (self.enapass)
-			# should be enabled
-			try:
+				# send enable password
+				self.ssh.sendline (self.enapass)
+				# should be enabled
 				self.ssh.expect(self.prompt)
-			except pexpect.TIMEOUT:
-				self.error ('timeout')
-			except pexpect.EOF:
-				self.error ('eof')
-			except KeyboardInterrupt:
-				self.error ('keyboard')
-		elif i == 1:
-			#print "already enabled (tacacs)"
-			pass
-		# define terminal length (desactivate the cisco pager -- More --
-		# not using the pager caused some incomplete fetching probably because of the buffer getting full
-		# so for now I prefer to use the system terminal settings and handle the pager (see shrun function)
-		#self.ssh.sendline ('terminal length 0')
-		try:
+			elif i == 1:
+				#print "already enabled (tacacs)"
+				pass
+			self.ssh.sendline ('terminal width 80')
 			self.ssh.expect(self.prompt)
+			# return OK status
+			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
 		except pexpect.EOF:
 			self.error ('eof')
 		except KeyboardInterrupt:
 			self.error ('keyboard')
-		# define terminal width
-		self.ssh.sendline ('terminal width 80')
-		try:
-			self.ssh.expect(self.prompt)
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-		# return OK status
-		return 0
 
 	def conft (self):
 		"""
@@ -246,7 +211,7 @@ class ciscoSsh(sshConn):
 			# filter show run for user names
 			self.ssh.sendline ("show run | include username")
 			# expecting some characters after the current prompt
-			self.ssh.expect ("$.*"+self.prompt)
+			self.ssh.expect (self.prompt)
 			# grab the content
 			res=self.ssh.before
 			# split the string into a table
@@ -284,7 +249,7 @@ class ciscoSsh(sshConn):
 			# filter show run for user names
 			self.ssh.sendline ("show run | include ntp server")
 			# expecting some characters after the current prompt
-			self.ssh.expect ("$.*"+self.prompt)
+			self.ssh.expect (self.prompt)
 			# grab the content
 			res=self.ssh.before
 			# split the string into a table
@@ -354,19 +319,26 @@ class ciscoSsh(sshConn):
 		so this require a workaround to clean it up, processed by netios)
 		Return a list with the lines of the running configuration
 		"""
-		res = ''
+		config = []
 		try:	
 			self.ssh.setecho(False)
 			self.ssh.sendline ("show run")
-			i = 1
-			while i == 1:
-				i = self.ssh.expect (["$.*"+self.prompt,r"More"])
-				res += self.ssh.before
-				if i == 1:
+			i = 0
+			while i == 0:
+				# workaround to get rid off weired characters given by pexpect
+				# It is dirty and probably slow
+				# I hope to find a better solution some day
+				i = self.ssh.expect (["\s?-{2}More-{2}\s?$",self.prompt])
+				print i
+                                res = re.sub(r"[\b]+",'',self.ssh.before)
+                                res = re.sub(r"^ {1} +"," ",res)
+                                res = re.sub(r"^ +acces","acces",res)
+                                res = re.sub(r"^ +!","!",res)
+                                config.append( re.sub(r"\s$","",res) )
+				if i == 0:
 					# pass the cisco pager -- More --
 					self.ssh.send(" ")
-			config=re.split("\n+",res)
-			print "config :%s"%config
+			#config=re.split("\n+",res)
 			return (config)
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
