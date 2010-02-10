@@ -28,7 +28,7 @@
 import getpass
 from netios.ciscoclass import *
 from optparse import OptionParser, OptionGroup
-from multiprocessing import Pool, Manager, Lock, Queue
+from multiprocessing import Pool, Manager, Lock
 	
 def credentials():
 	"""
