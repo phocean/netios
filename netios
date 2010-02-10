@@ -485,7 +485,8 @@ def close_connect(cisco, verb, flag):
 	"""
 	ppid = os.getppid()
 	pid = os.getpid()
-	print "[%d:%d]\t%s\tClosing SSH session"%(ppid,pid,cisco.host)
+	if verb:
+		print "[%d:%d]\t%s\tClosing SSH session"%(ppid,pid,cisco.host)
 	ret = cisco.ssh_close(flag)
 	if ret != 0 :
 		print "[%d:%d]\t%s\t## Failed to close SSH connection properly"%(ppid,pid,cisco.host)
