@@ -132,7 +132,7 @@ def confter(cisco,verb):
 		return (1)
 	return (cisco)
 
-def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTime,verb,sim, aaa, tac, nocheck, debug, lock):
+def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTime,verb, tac, nocheck, debug, lock):
 	"""
 	Change password function :
 		- create a cisco object, opening an ssh connection to the router,
@@ -258,7 +258,7 @@ def inter (cisco,lock):
 	cisco.interactive()
 	lock.release()
 
-def custom (host,user,sshpass,enapass,commandfile,startTime,verb,sim, debug,commands):
+def custom (host,user,sshpass,enapass,commandfile,startTime,verb,debug,commands):
 	"""
 	Parse a command file line by line, sending the commands to the router :
 		- create a cisco object, openning the ssh connection,
@@ -287,16 +287,11 @@ def custom (host,user,sshpass,enapass,commandfile,startTime,verb,sim, debug,comm
 	for command in commands:
 		command = line_cleanup(command)
 		print ("[%d:%d]\t%s\tCommand: \'%s\'"%(ppid,pid,host,command))
-		# not simulating : send the custom command to each host of the file
-		if sim is None :
-			ret = cisco.custcommand(command)
-			if ret != 0:
-				f_command_skip(host,error,startTime)
-				continue
-		# simulating : don't do anything and continue
-		elif verb:
-			print ("[%d:%d]\t%s\tSimulation mode, not applying any command"%(ppid,pid,host))
-	print ("[%d:%d]\t%s\tAll commands parsed"%(ppid,pid,host))
+		# send the custom command to each host of the file
+		ret = cisco.custcommand(command)
+		if ret != 0:
+			f_command_skip(host,error,startTime)
+			continue
 	# write conf to startup config
 	ret=cisco.writemem()
 	if verb:
@@ -610,7 +605,7 @@ def opts_check(parser,hosts,opts):
 		opts.proc = None
 	
 	# check triggered options
-        passmode_trig = opts.file or opts.commandfile or opts.newusr or opts.tacacs or opts.simu or opts.aaa or opts.simu
+        passmode_trig = opts.file or opts.commandfile or opts.newusr or opts.tacacs
         shusrmode_trig = opts.showusr
         shrunmode_trig = opts.showrun
         ntpmode_trig = opts.ntp
@@ -660,7 +655,7 @@ def main():
 			# clean up
 			host=line_cleanup(host)
 			print "[%d:%d]\t%s\tStarting process"%(ppid,pid,host)
-			ret = pool.apply_async(custom,(host,user,sshpass,enapass,opts.commandfile,startTime,opts.verb,opts.simu, opts.debug,commands))
+			ret = pool.apply_async(custom,(host,user,sshpass,enapass,opts.commandfile,startTime,opts.verb,opts.debug,commands))
 		pool.close()
 		pool.join()
 		if opts.file:
@@ -739,8 +734,6 @@ def main():
 		# new local user mode...
 		if opts.newusr:
 			(newuser,user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain_new()
-			if opts.simu:
-				newuser=user
 		# ... or update local user mode
 		else:
 			(user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain()
@@ -756,7 +749,7 @@ def main():
 			# clean up
 			host=line_cleanup(host)
 			print "[%d:%d]\t%s\tStarting process"%(ppid,pid,host)
-			ret = pool.apply_async(changepass,(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,startTime,opts.verb,opts.simu, opts.aaa, opts.tacacs, opts.nocheck, opts.debug,lock))
+			ret = pool.apply_async(changepass,(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,startTime,opts.verb, opts.tacacs, opts.nocheck, opts.debug,lock))
 			if isinstance(ret.get(),ciscoSsh) == True:
 				print "YES"
 			i = i + 1
