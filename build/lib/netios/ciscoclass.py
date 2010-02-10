@@ -161,47 +161,6 @@ class ciscoSsh(sshConn):
 		except KeyboardInterrupt:
 			self.error ('keyboard')
 
-	def aaa(self):
-		"""
-		(probably going to be suppressed)
-		Set the aaa parameters correctly to workaround sucking configurations
-		Return 0
-		"""
-		try:
-			#self.ssh.sendline ("no aaa new-model")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa new-model")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ('aaa authentication login default local group tacacs+ enable')
-			#self.ssh.expect (self.confprompt)
-			self.ssh.sendline ("aaa authentication enable default enable")
-			self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa authorization exec default local group tacacs+ if-authenticated")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa authorization commands 1 default local group tacacs+ if-authenticated")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa authorization commands 15 default local  group tacacs+ if-authenticated")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa authorization network default local group tacacs+")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa accounting exec default  start-stop group  tacacs+")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa accounting commands 1 default start-stop group tacacs+")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa accounting commands 15 default start-stop group tacacs+")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa accounting network default start-stop group tacacs+")
-			#self.ssh.expect (self.confprompt)
-			#self.ssh.sendline ("aaa accounting system default start-stop group tacacs+")
-			#self.ssh.expect (self.confprompt)		
-			return 0
-		except pexpect.TIMEOUT:
-			self.error ('timeout')
-		except pexpect.EOF:
-			self.error ('eof')
-		except KeyboardInterrupt:
-			self.error ('keyboard')
-
 	def show_username(self):
 		"""
 		Retrieve the list of local users and store them in a table

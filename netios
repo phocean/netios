@@ -28,7 +28,7 @@
 import getpass
 from netios.ciscoclass import *
 from optparse import OptionParser, OptionGroup
-from multiprocessing import Pool, Manager, Lock
+from multiprocessing import Pool, Manager, Lock, Queue
 	
 def credentials():
 	"""
@@ -163,36 +163,19 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 	if isinstance(cisco,ciscoSsh) != True:
 		print ("[%d:%d]\t%s\t### 'Configure terminal' failed, stopping here"%(ppid,pid,host))
 		return 1
-	# not simulation : we call the function to change the ssh password
-	if sim is None:
-		if aaa:
-			ret = cisco.aaa()
-			if ret != 0 :
-				print ("[%d:%d]\t%s\t### AAA mode failed, stopping here"%(ppid,pid,host))
-				return (1)
-			else:
-				if verb:
-					print ("[%d:%d]\t%s\t### AAA mode changed"%(ppid,pid,host))
-		ret = cisco.ssh_change(newuser,sshpassNew)
-		if ret != 0 :
-			print ("[%d:%d]\t%s\t### Failed to change SSH password, stopping here"%(ppid,pid,host))
-			return (1)
-	# simulation : we don't do anything and continue
-	else:
-		if verb:
-			print ("[%d:%d]\t%s\tSimulation mode, not changing the password"%(ppid,pid,host))
-	if verb:
-		print ("[%d:%d]\t%s\tPassword successfully changed"%(ppid,pid,host))
-	# not simulation : we change the enable password
-	if sim is None:
-		ret = cisco.ena_change(enapassNew)
-		if ret != 0 :
-			print ("[%d:%d]\t%s\t### Failed to change the Enable password"%(ppid,pid,host))
-			return (1)
-	# simulation : we don't do anything and continue
+	# we call the function to change the ssh password
+	ret = cisco.ssh_change(newuser,sshpassNew)
+	if ret != 0 :
+		print ("[%d:%d]\t%s\t### Failed to change SSH password, stopping here"%(ppid,pid,host))
+		return (1)
 	elif verb:
-		print ("[%d:%d]\t%s\tSimulation mode, not changing the ena password"%(ppid,pid,host))
-	if verb:
+		print ("[%d:%d]\t%s\tPassword successfully changed"%(ppid,pid,host))
+	# we change the enable password
+	ret = cisco.ena_change(enapassNew)
+	if ret != 0 :
+		print ("[%d:%d]\t%s\t### Failed to change the Enable password"%(ppid,pid,host))
+		return (1)
+	elif verb:
 		print ("[%d:%d]\t%s\tEnable password successfuly changed"%(ppid,pid,host))
 	# try to connect with the new password
 	if nocheck is None:
@@ -206,9 +189,8 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 		# test if connection was successful
 		# new user log in failed : stop here, don't delete any account
 		if isinstance(cisco2,ciscoSsh) != True:
-			print ("[%d:%d]\t%s\t### New password not working, stopping here"%(ppid,pid,host))
-			print ("[%d:%d]\t%s\tGoing to interactive mode for manual check"%(ppid,pid,host))
-			cisco.interactive()
+			print ("[%d:%d]\t%s\t### New credentials not working, keep the old ones (manual check required). Exiting..."%(ppid,pid,host))
+			print ("[%d:%d]\t%s\tNew credentials not working, keep the old ones (manual check required). Exiting..."%(ppid,pid,host))
 			# we close connection
 			close_connect(cisco, verb, 0)
 			ret = cisco.ssh_close(0)
@@ -233,22 +215,9 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 		return (1)
 	if userlist:
 		ret = cisco.delete_user(newuser,userlist)
-	#test #################################################################################################################################################
-	ret = 1
 	if ret != 0 :
 		print ("[%d:%d]\t%s\t### Failed to delete users - check it manually"%(ppid,pid,host))
-		print ("[%d:%d]\t%s\tGoing to interactive mode for manual check"%(ppid,pid,host))
-		#lock.acquire()
-		#print "zzz"		
-#		p = Process(target=inter, args=(cisco,lock,))
-#		p.start()
-#		p.join()
-		inter(cisco,lock)
-		#lock.release()
-		print "bof"
-		# we close connection
-		close_connect(cisco,verb, 0)
-		ret = cisco.ssh_close(0)
+		print ("[%d:%d]\t%s\tFailed to delete users - check it manually"%(ppid,pid,host))
 		return (1)
 	elif verb == True:
 		print ("[%d:%d]\t%s\tUnwanted users deleted"%(ppid,pid,host))
@@ -264,9 +233,8 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 		else:
 			cisco2=connect(host, newuser, sshpassNew, enapassNew, startTime,verb, logincount, debug)
 		if isinstance(cisco2,ciscoSsh) != True:
-			print ("[%d:%d]\t%s\t### New password not working, stopping here"%(ppid,pid,host))
-			print ("[%d:%d]\t%s\tGoing to interactive mode for manual check"%(ppid,pid,host))
-			cisco.interactive()
+			print ("[%d:%d]\t%s\t### Problem after deleting users (manual check required). Exiting..."%(ppid,pid,host))
+			print ("[%d:%d]\t%s\tProblem after deleting users  (manual check required). Exiting..."%(ppid,pid,host))
 			# we close connection
 			close_connect(cisco, verb, 0)
 			ret = cisco.ssh_close(0)
@@ -283,6 +251,8 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 	return 0
 
 def inter (cisco,lock):
+	sys.stdin.close()
+	sys.stdin = open(os.devnull)
 	lock.acquire()
 	print "bro"
 	cisco.interactive()
@@ -586,27 +556,25 @@ def process_args():
 	Put down the program options
 	Return a parser object
 	"""
-	parser = OptionParser(usage="\n\t%prog [options] host1 host2 ... hostn\n OR\n\t%prog [options] -f FILE\n\n Check --help for more details", version="%prog 0.72")
+	parser = OptionParser(usage="\n\t%prog [options] host1 host2 ... hostn\n OR\n\t%prog [options] -f FILE\n\n\n Netios is a little tool operating Cisco routers within SSH.\n Check --help for more details", version="%prog 0.73")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verb", help="Print verbose output.")
 	parser.add_option("-d","--debug", action="store_true", dest="debug", help="Debug mode : verbose and extra logs")
 	parser.add_option("-f", "--file", action="store", dest="file", metavar="FILE", help="Remote hosts file.")
-	parser.add_option("-x", "--process", action="store", dest="proc", type="int", help="Number of simultaneous processes (default : adaptive).", default=None)
+	parser.add_option("-x", "--proc", action="store", dest="proc", type="int", help="Number of simultaneous processes (default : adaptive).", default=None)
 	group = OptionGroup(parser, "Password change mode","Mode to edit the local admin account of a router within SSH.")
 	group.add_option("-i","--in", action="store", dest="commandfile", metavar="FILE", help="Commands file")
-	group.add_option("-n","--newuser", action="store_true", dest="newusr", help="Add user mode")
-	group.add_option("-t","--tacacs", action="store_true", dest="tacacs", help="The management account is a tacacs one")
-	group.add_option("-s","--simulate", action="store_true", dest="simu", help="Simulation mode")
-	group.add_option("-a","--aaa", action="store_true", dest="aaa", help="[EXPERIMENTAL] Change AAA model")
+	group.add_option("-a","--newuser", action="store_true", dest="newusr", help="Add user mode")
+	group.add_option("--tac", action="store_true", dest="tacacs", help="Operating account remotly authenticated.")
 	group.add_option("--no-check", action="store_true", dest="nocheck", help="No proof check")
 	parser.add_option_group(group)
-	group = OptionGroup(parser, "User list mode","Mode to retrieve the local users configured in a router")
+	group = OptionGroup(parser, "User list mode","Retrieve the local users configured in a router")
 	group.add_option("-u","--showuser", action="store_true", dest="showusr", help="Show user mode", default=False)
 	parser.add_option_group(group)
-	group = OptionGroup(parser, "Show run mode","[EXPERIMENTAL] Mode to retrieve the whole running configuration a router")
-	group.add_option("-r","--shrun", action="store_true", dest="showrun", help="Show running config mode")
+	group = OptionGroup(parser, "Show run mode","Retrieve the running configuration")
+	group.add_option("-s","--shrun", action="store_true", dest="showrun", help="Show running config mode")
 	parser.add_option_group(group)
-	group = OptionGroup(parser, "NTP change mode","Mode to update the ntp servers set in a router")
-	group.add_option("-p","--ntp-server", action="append", dest="ntp", help="Change ntp servers")
+	group = OptionGroup(parser, "NTP change mode","Update the ntp servers set in a router")
+	group.add_option("-n","--ntp", action="append", dest="ntp", help="Change ntp servers")
 	parser.add_option_group(group)
 	return parser
 
@@ -783,11 +751,15 @@ def main():
 		manager = Manager()
 		lock = manager.Lock()
 		# -- hosts parsing
+		i = 0
 		for host in hosts:
 			# clean up
 			host=line_cleanup(host)
 			print "[%d:%d]\t%s\tStarting process"%(ppid,pid,host)
 			ret = pool.apply_async(changepass,(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,startTime,opts.verb,opts.simu, opts.aaa, opts.tacacs, opts.nocheck, opts.debug,lock))
+			if isinstance(ret.get(),ciscoSsh) == True:
+				print "YES"
+			i = i + 1
 		pool.close()
 		pool.join()
 		if opts.file:
