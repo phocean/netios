@@ -288,7 +288,6 @@ class ciscoSsh(sshConn):
 				# It is dirty and probably slow
 				# I hope to find a better solution some day
 				i = self.ssh.expect (["\s?-{2}More-{2}\s?$",self.prompt])
-				print i
                                 res = re.sub(r"[\b]+",'',self.ssh.before)
                                 res = re.sub(r"^ {1} +"," ",res)
                                 res = re.sub(r"^ +acces","acces",res)
