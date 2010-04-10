@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 from distutils.core import setup
 
 setup(
   name = "netios",
-  version = "0.73",
+  version = "0.74",
   description = "SSH remote configuration tool",
   author = "Jean-Christophe Baptiste",
   author_email = "jc@phocean.net",

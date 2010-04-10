@@ -1,3 +1,7 @@
+2010-04-08  (0.74) Jean-Christophe Baptiste <jc@phocean.net>
+
+* ciscoclass.py : improve logging
+
 2010-02-10  (0.73) Jean-Christophe Baptiste <jc@phocean.net>
 
 * ciscoclass.py : simplify change_password function

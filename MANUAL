@@ -1,0 +1,128 @@
+  Synopsis
+  --------
+
+    Netios need a list of SSH hosts to work on. It can be provided within the command line or from a simple text file (1 line = 1 host).
+    A host can be either an IP address or a FQDN.
+    
+    Command line :
+    
+    	netios [options] host1 host2 ... hostn
+    
+    File :
+    
+	netios [options] -f FILE
+
+    Without any further option, Netios will default to changing password mode and start an interactive session.
+    For security reasons and to prevent any formating troubles, Netios works only interactively.
+    
+    Options and modes are described below.
+    
+  Options
+  -------
+    
+    --version             show program's version number and exit
+    
+    -h, --help            show this help message and exit
+    
+    -v, --verbose         Print verbose output.
+    
+    -d, --debug           Debug mode : verbose and extra logs.
+    			  Logs are saved into a log folder, created in the working directory.
+    			  They contain a complete dump of the SSH dialog, showing IOS commands, so debugging an issue is pretty easy.
+    			  * WARNING * 
+    			  Log files may show in CLEAR the SSH and IOS PASSWORDS, so use it carefully only when necessary and don't forget to clear up the files after use.
+    			  
+    -f FILE, --file=FILE  Remote hosts file.
+    			  The file must be a simple text file with every line matching a host (IP or FQDN).
+    
+    -x PROC, --proc=PROC  Number of simultaneous processes. By default, it is determine according to the hardware (1 core = 1 process).
+    
+  Modes
+  -----
+  
+    Changing password (default)
+    ---------------------------
+    
+    In this mode, Netios will parse each host given and start a new process to change the local passwords.
+    Note that the tool is aimed to keep only one working local account, so all other accounts will be deleted during th process.
+    We consider that during normal operations, one should have a working AAA server (Tacacs+ or Radius) and that a local account must be used only in case of emergency.
+    
+    1)	It asks for an account to connect to all the provided hosts. This account must have the administrative rights to update the IOS accounts.
+    	The best is to use a TACACS or RADIUS account to update local accounts. But it can work without problem with a local account (one which will be replaced or just updated).
+    
+    2)	It connects to the host and update the account.
+    
+    3)	It establishes a connection to check that the account is working well, exit otherwise.
+    
+    4)	It looks for other local accounts and erease all of them, except the one we just update.
+    
+    5)  It checks again that the local account is still working, throw an alarm otherwise.
+    
+    Options :
+    
+    -i FILE, --in=FILE  Read a command file. In this file, you can write any IOS command. The script will send them in configure terminal mode.
+    			* WARNING *
+    			Beware of the syntax and the order of the commands, they won't be checked by the tool !
+    
+    -a, --newuser       Add user mode. With this mode, it is possible to insert a new user, instead of just updating the account used to login.
+    			All other accounts will be deleted during the process.
+    
+    --tac               Indicate that the account used to login is remotly authenticated by an AAA server. Without it, Netios will send a warning during the safety check.
+    
+    --no-check          No proof check will be processed with this option. It will speed up the process, when you have enough trust with the Netios process.
+    
+    Examples :
+    
+    $ netios 192.168.1.1 10.1.1.1 172.16.1.1
+    $ netios ./hostfile.txt
+    $ netios -a --tac 192.168.1.1
+    $ netios 192.168.1.1 -i ./commands.txt
+    
+   
+   Retrieving an user list
+   -----------------------
+   
+   Netios just output the list of local account registered in the router.
+   The list is also recorded in an folder of the working directory, named "out". The file is in CSV format.
+   
+   It is recommended to use this mode as a test previously to changing password. It will give you a good idea of the connectivity, unavalaible hosts, etc.
+   
+   Options :
+   
+   -u, --showuser      Show user mode
+   
+   Examples :
+    
+    $ netios -u 192.168.1.1 10.1.1.1 172.16.1.1
+    $ netios -u ./hostfile.txt
+   
+   Showing running configuration
+   -----------------------------
+   
+   In this mode, Netios will retrieve the running configuration of the router and save it into the "out" folder of the working directory.
+   
+   Options :
+   
+   -s, --shrun         Show running config mode
+   
+   Examples :
+    
+    $ netios -s 192.168.1.1 10.1.1.1 172.16.1.1
+    $ netios -s ./hostfile.txt
+   
+   Changing NTP server
+   -------------------
+   
+   This mode allows to update the ntp servers set in the router. Each NTP server must be given within the command line with -n. It can be an IP address or a FQDN.
+
+    Options :
+    
+    -n NTP, --ntp=NTP   Change ntp servers
+    
+    Examples :
+    
+    $ netios -n 192.168.254.254 -n  ntp.myserver.com 192.168.1.1 10.1.1.1 172.16.1.1
+    $ netios -n 192.168.254.254 -n  ntp.myserver.com ./hostfile.txt
+    
+    
+That's all folks ! Hopefully more features are coming !

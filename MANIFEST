@@ -7,6 +7,5 @@ lib/netios/__init__.py
 lib/netios/__init__.pyc
 lib/netios/ciscoclass.py
 lib/netios/ciscoclass.pyc
-lib/netios/portfinder.py
 lib/netios/sshclass.py
 lib/netios/sshclass.pyc
