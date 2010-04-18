@@ -39,46 +39,39 @@ from multiprocessing import Pool, Manager, Lock
 def connect (host,user,sshpass,enapass, startTime,verb,logincount,debug,errList):
 	"""
 	Open an ssh connection, creating a ciscoclass object
-	Return the ciscoclass instance
+	Return : OK = ciscoclass obj, ERR = errList
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
-	
-	if verb:
-		print '[%d:%d]\t%s\tOpening ssh connection'%(ppid,pid,host)
 	# create the cisco object
 	cisco = ciscoSsh(host, user, sshpass,enapass,startTime,logincount, debug)
 	# logging
 	ret = cisco.login(verb)
-	# connection failed
 	if ret != 0 :
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':ret})
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':host,'desc':ret})
 		return errList
-	# connection successful
 	if verb:
-		print "[%d:%d]\t%s\tEntering enable mode"%(ppid,pid,host)
+		  print "[%d:%d]\t%s\tConnected."%(cisco.ppid,cisco.pid,cisco.host)
 	# entering enable mode
 	ret = cisco.ena()
 	if ret != 0 :
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'Failed to enter Enable mode, stopping here'})
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Failed to enter Enable mode, stopping here'})
 		return errList
-	# return the object
 	if verb:
-		print "[%d:%d]\t%s\tConnection successfuly done"%(ppid,pid,host)
+		  print "[%d:%d]\t%s\tDevice enabled."%(cisco.ppid,cisco.pid,cisco.host)
+	# return the object
 	return cisco
 
 def confter(cisco,verb,errList):
 	"""
 	Enter <configure terminal> mode, calling the ciscoclass object
-	Return the ciscoclass object
+	Return : OK = 0, ERR = errList
 	"""
-	if verb:
-		print "[%d:%d]\t%s\tEntering Configure Terminal mode"%(cisco.ppid,cisco.pid,cisco.host)
 	ret = cisco.conft()
 	if ret != 0 :
-		errList.append({'time':time(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Failed to enter Configuration mode, stopping here'})
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Failed to enter Configuration mode, stopping here'})
 		return errList
-	return cisco
+	if verb:
+		  print "[%d:%d]\t%s\t\'configure terminal\' mode"%(cisco.ppid,cisco.pid,cisco.host)
+	return 0
 
 def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTime,verb, tac, nocheck, debug):
 	"""
@@ -93,12 +86,9 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 		- otherwise, pause the loop and give an interactive terminal to the user to manually check the stuff and close everything when the user exit
 		- go on with the next router
 	The purpose of simulation mode is just to check that we can connect and enable routers, without changing any password
-	Return 0
+	Return : OK = 0, ERR = errList
 	"""
 	errList = []
-	ppid = os.getppid()
-	pid = os.getpid()
-	print '[%d:%d]\t%s\tChanging passwords'%(ppid,pid,host)
 	logincount = 0 # login ID for concurrent ssh session
 	# call to  function
 	cisco=connect(host,user,sshpass,enapass,startTime,verb,logincount,debug,errList)
@@ -107,102 +97,91 @@ def changepass (host,user,newuser,sshpass,sshpassNew, enapass,enapassNew,startTi
 		return cisco
 	# call to function to enter configure terminal mode
 	ret=confter(cisco,verb,errList)
-	if isinstance(ret,ciscoSsh) != True:
-		# we close connection
-		close_connect(cisco, verb, 0, errList)
+	if ret != 0:
+		close_connect(cisco,verb,0,errList)
 		return errList
 	# we call the function to change the ssh password
 	ret = cisco.ssh_change(newuser,sshpassNew)
 	if ret != 0 :
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'### Failed to change SSH password, stopping here'})
-		# we close connection
-		close_connect(cisco, verb, 0, errList)
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'### Failed to change SSH password, stopping here'})
+		close_connect(cisco,verb,0,errList)
 		return errList
 	elif verb:
-		print ("[%d:%d]\t%s\tPassword successfully changed"%(ppid,pid,host))
+		print ("[%d:%d]\t%s\tPassword successfully changed"%(cisco.ppid,cisco.pid,cisco.host))
 	# we change the enable password
 	ret = cisco.ena_change(enapassNew)
 	if ret != 0 :
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'### Failed to change the Enable password, stopping here'})
-		# we close connection
-		close_connect(cisco, verb, 0, errList)
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'### Failed to change the Enable password, stopping here'})
+		close_connect(cisco,verb,0,errList)
 		return errList
 	elif verb:
-		print ("[%d:%d]\t%s\tEnable password successfuly changed"%(ppid,pid,host))
+		print ("[%d:%d]\t%s\tEnable password successfuly changed"%(cisco.ppid,cisco.pid,cisco.host))
 	# try to connect with the new password
 	if nocheck is None:
 		logincount = logincount + 1
 		if verb:
-			print ("[%d:%d]\t%s\tSession #%d to check the new passwords"%(ppid,pid,host,logincount))
+			print ("[%d:%d]\t%s\tSession #%d to check the new passwords"%(cisco.ppid,cisco.pid,cisco.host,logincount))
 		if tac:
-			cisco2=connect(host,user,sshpass,enapass,startTime,verb,logincount,debug,errList)
+			cisco2=connect(host,user,sshpass,enapass,timelog(0),verb,logincount,debug,errList)
 		else:
-			cisco2=connect(host,newuser,sshpassNew,enapassNew,startTime,verb,logincount,debug,errList)
+			cisco2=connect(host,newuser,sshpassNew,enapassNew,timelog(0),verb,logincount,debug,errList)
 		# test if connection was successful
 		# new user log in failed : stop here, don't delete any account
 		if isinstance(cisco2,ciscoSsh) != True:
 			errList.append(cisco2)
-			errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'### New credentials not working, keep the old ones (manual check required). Exiting...'})
-			# we close connection
-			close_connect(cisco, verb, 0, errList)
+			errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'### New credentials not working, keep the old ones (manual check required). Exiting...'})
+			close_connect(cisco,verb,0,errList)
 			return errList
-		# we close connection
-		close_connect(cisco2,verb, 0, errList)
+		close_connect(cisco2,verb,0,errList)
 	# delete extra accounts
 	ret = cisco.exit()	
 	if ret != 0 :
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'### Failed to exit cleanly the session'})
-		# we close connection
-		close_connect(cisco, verb, 0, errList)
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'### Failed to exit cleanly the session'})
+		close_connect(cisco,verb,0,errList)
 		return errList
 	userlist = cisco.show_username()
 	if (verb and userlist):
-		print ("[%d:%d]\t%s\tUser list :\n\t\t\t\t%s"%(ppid,pid,host,userlist))
+		print ("[%d:%d]\t%s\tUser list :\n\t\t\t\t%s"%(cisco.ppid,cisco.pid,cisco.host,userlist))
 	elif (verb and userlist is None):
-		print ("[%d:%d]\t%s\tNo other user"%(ppid,pid,host))
+		print ("[%d:%d]\t%s\tNo other user"%(cisco.ppid,cisco.pid,cisco.host))
 	# configure terminal mode
-	cisco=confter(cisco,verb,errList)
-	if isinstance(cisco,ciscoSsh) != True:
-		# we close connection
-		close_connect(cisco, verb, 0, errList)
-		return cisco
+	ret=confter(cisco,verb,errList)
+	if ret != 0:
+	  close_connect(cisco,verb,0,errList)
+	  return errList
 	if userlist:
 		ret = cisco.delete_user(newuser,userlist)
 		if ret != 0 :
-			errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'### Failed to delete users: check it manually'})
-			# we close connection
-			close_connect(cisco, verb, 0, errList)
+			errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'### Failed to delete users: check it manually'})
+			close_connect(cisco,verb,0,errList)
 			return errList
 		elif verb == True:
-			print ("[%d:%d]\t%s\tUnwanted users deleted"%(ppid,pid,host))
+			print ("[%d:%d]\t%s\tUnwanted users deleted"%(cisco.ppid,cisco.pid,cisco.host))
 	# check again the connection
 	# open a new session cisco2 and keep the cisco one alive until it is checked
-	# give back a shell to the user otherwise
 	if nocheck is None:
 		logincount = logincount + 1
 		if verb:
-			print ("[%d:%d]\t%s\tSession #%d to check the new passwords"%(ppid,pid,host,logincount))
+			print ("[%d:%d]\t%s\tSession #%d to check the new passwords"%(cisco.ppid,cisco.pid,cisco.host,logincount))
 		if tac:
-			cisco2=connect(host,user,sshpass,enapass,startTime,verb,logincount,debug,errList)
+			cisco2=connect(host,user,sshpass,enapass,timelog(0),verb,logincount,debug,errList)
 		else:
-			cisco2=connect(host,newuser,sshpassNew,enapassNew,startTime,verb,logincount,debug,errList)
+			cisco2=connect(host,newuser,sshpassNew,enapassNew,timelog(0),verb,logincount,debug,errList)
 		if isinstance(cisco2,ciscoSsh) != True:
 			errList.append(cisco2)
-			errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'### Connection issue after deleting users (manual check required). Exiting...'})
-			# we close connection
-			close_connect(cisco, verb, 0, errList)
-			close_connect(cisco2, verb, 0, errList)
+			errList.append({'time':timelog(0),'ppid':cisco2.ppid,'pid':cisco2.pid,'host':cisco2.host,'desc':'### Connection issue after deleting users (manual check required). Exiting...'})
+			close_connect(cisco,verb,0,errList)
+			close_connect(cisco2,verb,0,errList)
 			return errList
 	# all fine !
 	# write conf to startup config
 	ret=cisco.writemem()
 	if ret != 0:
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'Command \'write mem\' failed'})
-		# we close connection
-		close_connect(cisco, verb, 0, errList)
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Command \'write mem\' failed'})
+		close_connect(cisco,verb,0,errList)
 		return errList
 	if verb:
-		print ("[%d:%d]\t%s\tDone with password change, exiting"%(ppid,pid,host))
+		print ("[%d:%d]\t%s\tDone with password change, exiting"%(cisco.ppid,cisco.pid,cisco.host))
 	# we close connection
 	close_connect(cisco, verb, 0, errList)
 	return 0
@@ -214,12 +193,9 @@ def custom (host,user,sshpass,enapass,commandfile,startTime,verb,debug,commands)
 		- enter <configure terminal> mode,
 		- parse and send the commands,
 		- close everything (file and connection).
-	Return 0
+	Return : OK = 0, ERR = errList
 	"""
 	errList = []
-	ppid = os.getppid()
-	pid = os.getpid()
-	print '[%d:%d]\t%s\tApplying custom commands'%(ppid,pid,host)
 	# open the connection
 	logincount = 0
 	error = None
@@ -228,45 +204,42 @@ def custom (host,user,sshpass,enapass,commandfile,startTime,verb,debug,commands)
 		return cisco
 	# enter configure terminal mode
 	ret=confter(cisco,verb,errList)
-	if isinstance(ret,ciscoSsh) != True:
-	  # we close connection
-	  close_connect(cisco, verb, 0, errList)
+	if ret != 0:
+	  close_connect(cisco,verb,0,errList)
 	  return errList
 	for command in commands:
 		command = line_cleanup(command)
-		print ("[%d:%d]\t%s\tCommand: \'%s\'"%(ppid,pid,host,command))
+		if verb:
+		  print ("[%d:%d]\t%s\tCommand: \'%s\'"%(cisco.ppid,cisco.pid,cisco.host,command))
 		# send the custom command to each host of the file
 		ret = cisco.custcommand(command)
 		if ret != 0:
 			#f_command_skip(host,error,startTime)
-			errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':"Command \'%s\' failed"%command})
+			errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':"Command \'%s\' failed"%command})
 			continue
 	# write conf to startup config
 	ret=cisco.writemem()
 	if ret != 0:
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'Command \'write mem\' failed'})
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Command \'write mem\' failed'})
 		# we close connection
-		close_connect(cisco, verb, 0, errList)
+		close_connect(cisco,verb,0,errList)
 		return errList
 	if verb:
-		print ("[%d:%d]\t%s\tDone with applying commands, exiting"%(ppid,pid,host))
+		print ("[%d:%d]\t%s\tDone with applying commands, exiting"%(cisco.ppid,cisco.pid,cisco.host))
 	# we close connection
-	close_connect(cisco, verb, 0, errList)
+	close_connect(cisco,verb,0,errList)
 	return 0
 
 def userlist(host,user,sshpass,enapass,startTime,verb, debug, lock):
 	"""
 	Retrieve of list of the local users registered on the router
 	Print out this list to both stdout and a file
-	Return 0
+	Return : OK = 0, ERR = errList
 	"""
 	errList = []
-	ppid = os.getppid()
-	pid = os.getpid()
-	print '[%d:%d]\t%s\tRetrieving user list'%(ppid,pid,host)
 	# open a connection
 	logincount = 0
-	cisco=connect(host,user,sshpass,enapass, startTime,verb, logincount, debug,errList)
+	cisco=connect(host,user,sshpass,enapass,startTime,verb,logincount,debug,errList)
 	if isinstance(cisco,ciscoSsh) != True:
 		return cisco
 	# call the function to extract users
@@ -282,13 +255,13 @@ def userlist(host,user,sshpass,enapass,startTime,verb, debug, lock):
 		flist = fileopen ("out/%s/users.log"%startTime,"a")
 		flist.write ("%s"%host)
 		for user in userlist:
-			print ("[%d:%d]\t%s\tFound user: \'%s\'"%(ppid,pid,host,user))
+			print ("[%d:%d]\t%s\tFound user: \'%s\'"%(cisco.ppid,cisco.pid,cisco.host,user))
 			flist.write (";%s"%user)
 		flist.write ("\n")
 		fileclose(flist)
 		lock.release()
 	else :
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'### No local user found!'})
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'### No local user found!'})
 		return errList
 	return 0
 
@@ -301,12 +274,9 @@ def ntpserver(host,user,sshpass,enapass,startTime,verb,newntpsrv,debug):
 		- remove these old servers from the running configuration,
 		- add the new ntp servers to the router,
 		- write memory and exit.
-	Return 0
+	Return : OK = 0, ERR = errList
 	"""
 	errList = []
-	ppid = os.getppid()
-	pid = os.getpid()
-	print '[%d:%d]\t%s\tChanging ntp server'%(ppid,pid,host)
 	# open a connection
 	logincount = 0
 	cisco=connect(host,user,sshpass,enapass,startTime,verb,logincount,debug,errList)
@@ -319,41 +289,38 @@ def ntpserver(host,user,sshpass,enapass,startTime,verb,newntpsrv,debug):
 	dir_check('out/%s'%startTime)
 	# enter configure terminal mode
 	ret=confter(cisco,verb,errList)
-	if isinstance(ret,ciscoSsh) != True:
-	  # we close connection
-	  close_connect(cisco, verb, 0, errList)
+	if ret != 0:
+	  close_connect(cisco,verb,0,errList)
 	  return errList
 	# print and suppress ntp servers
 	if ntpsrv:
 		if verb:
 			for i in ntpsrv:
-				print "[%d:%d]\t%s\tFound ntp server : %s"%(ppid,pid,host,i)
+				print "[%d:%d]\t%s\tFound ntp server : %s"%(cisco.ppid,cisco.pid,cisco.host,i)
 		ret = cisco.no_ntp_server(ntpsrv)
 		if ret != 0:
-			errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'Command \'no ntp server\' failed'})
+			errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Command \'no ntp server\' failed'})
 	else:
 		if verb:
-			errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'Empty string returned, no ntp server?'})
+			errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Empty string returned, no ntp server?'})
 	# add ntp servers
 	if newntpsrv:
 		for i in newntpsrv:
-			print "[%d:%d]\t%s\tAdded ntp server %s successfuly"%(ppid,pid,host,i)
-		ret=cisco.ntp_server(newntpsrv)
-		if ret != 0:
-		  errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'Command \'ntp server\' failed'})
+		  ret=cisco.ntp_server(newntpsrv)
+		  if ret != 0:
+		    errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Command \'ntp server\' failed'})
+		  print "[%d:%d]\t%s\tAdded ntp server %s successfuly"%(cisco.ppid,cisco.pid,cisco.host,i)
 	# write conf to startup config
 	ret=cisco.writemem()
 	# we close connection
 	close_connect(cisco,verb,0,errList)
-	if verb:
-		print "[%d:%d]\t%s\tExiting and closing connection"%(ppid,pid,host)
 	return 0
 		
 def show_run(host,user,sshpass,enapass,startTime,verb,debug):
 	"""
 	Show the running configuration of the router and write it to a file
 	Call the ciscoclass for the <show run> attribute
-	Return 0
+	Return : OK = 0, ERR = errList
 	"""
 	errList = []
 	logincount = 0
@@ -378,9 +345,9 @@ def show_run(host,user,sshpass,enapass,startTime,verb,debug):
 		fileclose(fconfig)
 		close_connect(cisco, verb, 0, errList)
 	else:
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'show run : empty string returned!'})
+		errList.append({'time':timelog(0),'ppid':cisco.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'show run : empty string returned!'})
 		# we close connection
-		close_connect(cisco, verb, 0, errList)
+		close_connect(cisco,verb,0,errList)
 		return errList
 	return 0
 
@@ -390,39 +357,33 @@ def show_run(host,user,sshpass,enapass,startTime,verb,debug):
 
 """
 
-def credentials():
+def credentials(ppid,pid):
 	"""
 	Read the current credentials to connect to the router :
 		- ssh username and password
 		- enable password
-	Return these credentials
+	Return credentials
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	print "[%d:%d]\tCurrent credentials to use:"%(ppid,pid)
 	user = raw_input('\t\tUsername: ')
 	sshpass = getpass.getpass('\t\tSSH password: ')
 	enapass = getpass.getpass('\t\tEnable password: ')
 	return (user,sshpass,enapass)
 
-def new_user():
+def new_user(ppid,pid):
 	"""
 	Snippet to read the updated username
 	Return the username
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	print "[%d:%d]\tNew user to update or create:"%(ppid,pid)
 	newuser = raw_input('\t\tNew Username: ')
 	return newuser
 	
-def new_pass():
+def new_pass(ppid,pid):
 	"""
 	Snippet to read the updated ssh password
 	Return the password
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	print "[%d:%d]\tUpdated SSH password"%(ppid,pid)
 	while 1:
 		newpassword = getpass.getpass('\t\tType in: ')
@@ -433,13 +394,11 @@ def new_pass():
 			break
 	return newpassword
 
-def new_ena():
+def new_ena(ppid,pid):
 	"""
 	Snippet to read the enable password
 	Return the password
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	print "[%d:%d]\tUpdated Enable password"%(ppid,pid)
 	while 1:
 		newena = getpass.getpass('\t\tType in: ')
@@ -450,39 +409,33 @@ def new_ena():
 			break
 	return newena
 
-def credentials():
+def credentials(ppid,pid):
 	"""
 	Read the current credentials to connect to the router :
 		- ssh username and password
 		- enable password
 	Return these credentials
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	print "[%d:%d]\tCurrent credentials to use:"%(ppid,pid)
 	user = raw_input('\t\tUsername: ')
 	sshpass = getpass.getpass('\t\tSSH password: ')
 	enapass = getpass.getpass('\t\tEnable password: ')
 	return (user,sshpass,enapass)
 
-def new_user():
+def new_user(ppid,pid):
 	"""
 	Snippet to read the updated username
 	Return the username
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	print "[%d:%d]\tNew user to update or create:"%(ppid,pid)
 	newuser = raw_input('\t\tNew Username: ')
 	return newuser
 	
-def new_pass():
+def new_pass(ppid,pid):
 	"""
 	Snippet to read the updated ssh password
 	Return the password
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	print "[%d:%d]\tUpdated SSH password"%(ppid,pid)
 	while 1:
 		newpassword = getpass.getpass('\t\tType in: ')
@@ -493,13 +446,11 @@ def new_pass():
 			break
 	return newpassword
 
-def new_ena():
+def new_ena(ppid,pid):
 	"""
 	Snippet to read the enable password
 	Return the password
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	print "[%d:%d]\tUpdated Enable password"%(ppid,pid)
 	while 1:
 		newena = getpass.getpass('\t\tType in: ')
@@ -534,38 +485,36 @@ def fileclose(file):
 		print "## I can't close the file you specified"
 		sys.exit(2)
 
-def credential_chain():
+def credential_chain(ppid,pid):
 	"""
 	Record the credentials
 	In this mode, the existing local user of the router is used and its password will be updated during the process
 	Return the credentials
 	"""
-	(user,sshpass,enapass)=credentials()
-	sshpassNew = new_pass ()
-	enapassNew = new_ena ()
+	(user,sshpass,enapass)=credentials(ppid,pid)
+	sshpassNew = new_pass (ppid,pid)
+	enapassNew = new_ena (ppid,pid)
 	return (user,sshpass,enapass,sshpassNew,enapassNew)
 
-def credential_chain_new():
+def credential_chain_new(ppid,pid):
 	"""
 	New user mode : call to credential_chain and then record a new user
 	Return all these credentials
 	"""
-	(user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain()
-	newuser=new_user()
+	(user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain(ppid,pid)
+	newuser=new_user(ppid,pid)
 	return (newuser,user,sshpass,enapass,sshpassNew,enapassNew)
 
-def close_connect(cisco, verb, flag, errlist):
+def close_connect(cisco,verb,flag,errlist):
 	"""
 	Call the ciscoclass object to handle the ssh connection logout
 	Return 0
 	"""
-	ppid = os.getppid()
-	pid = os.getpid()
 	if verb:
-		print "[%d:%d]\t%s\tClosing SSH session"%(ppid,pid,cisco.host)
+		print "[%d:%d]\t%s\tClosing SSH session"%(cisco.ppid,cisco.pid,cisco.host)
 	ret = cisco.ssh_close(flag)
 	if ret != 0 :
-		errList.append({'time':startTime,'ppid':ppid,'pid':pid,'host':host,'desc':'Failed to close SSH connection properly'})
+		errList.append({'time':timelog(0),'ppid':cico.ppid,'pid':cisco.pid,'host':cisco.host,'desc':'Failed to close SSH connection properly'})
 		return errList
 	return 0
 
@@ -604,11 +553,11 @@ def f_error(errList):
 			log.write("%s\t[%d:%d]\t%s\t%s\n"%(i['time'],i['ppid'],i['pid'],i['host'],i['desc']))
 	fileclose(log)
 
-def f_hosts_end():
+def f_hosts_end(ppid,pid):
 	"""
 	End of hosts parsing : output and log
 	"""
-	print "[%d:%d]\t### All hosts parsed. Good Bye !"%(os.getppid(),os.getpid())
+	print "[%d:%d]\t### All done. Good Bye !"%(ppid,pid)
 
 def process_args():
 	"""
@@ -700,7 +649,8 @@ def main():
 	# check for content and compatibility between modes	
 	opts = opts_check(parser,hosts,opts)
 	# timestamp
-	startTime=time(0)
+	startTime=timelog(0)
+	err = False
 	
 	# create the pool of processes
 	pool = Pool(processes=opts.proc)
@@ -712,7 +662,7 @@ def main():
 	# begin of custom command mode
 	if opts.commandfile:
 		# read credentials
-		(user,sshpass,enapass)=credentials()	
+		(user,sshpass,enapass)=credentials(ppid,pid)	
 		# commands parsing
 		fd = fileopen("%s"%opts.commandfile,"r")
 		commands = [i for i in fd]
@@ -724,6 +674,7 @@ def main():
 			ret = pool.apply_async(custom,(host,user,sshpass,enapass,opts.commandfile,startTime,opts.verb,opts.debug,commands))
 			if ret.get() != 0:
 			  f_error(ret.get())
+			  err = True
 		if fd:
 		  fileclose(fd)
 	# end of custom command mode
@@ -733,7 +684,7 @@ def main():
 		# lock for file access
 		manager = Manager()
 		lock = manager.Lock()
-		(user,sshpass,enapass)=credentials()
+		(user,sshpass,enapass)=credentials(ppid,pid)
 		for host in hosts:
 			# clean up
 			host=line_cleanup(host)
@@ -741,11 +692,12 @@ def main():
 			ret = pool.apply_async(userlist,(host,user,sshpass,enapass,startTime,opts.verb, opts.debug,lock))
 			if ret.get() != 0:
 				f_error(ret.get())
+				err = True
 	# end of show user mode
 
 	# show run mode
 	elif opts.showrun:
-		(user,sshpass,enapass)=credentials()
+		(user,sshpass,enapass)=credentials(ppid,pid)
 		for host in hosts:
 			# clean up
 			host=line_cleanup(host)
@@ -753,11 +705,12 @@ def main():
 			ret = pool.apply_async(show_run,(host,user,sshpass,enapass,startTime,opts.verb, opts.debug))
 			if ret.get() != 0:
 			  f_error(ret.get())
+			  err = True
 	# end of show run mode
 
 	# ntp mode
 	elif opts.ntp:
-		(user,sshpass,enapass)=credentials()
+		(user,sshpass,enapass)=credentials(ppid,pid)
 		for host in hosts:
 			# clean up
 			host=line_cleanup(host)
@@ -765,16 +718,17 @@ def main():
 			ret = pool.apply_async(ntpserver,(host,user,sshpass,enapass,startTime,opts.verb,opts.ntp,opts.debug))
 			if ret.get() != 0:
 			  f_error(ret.get())
+			  err = True
 	# end of ntp mode
 
 	# default mode : change password
 	else:
 		# new local user mode...
 		if opts.newusr:
-			(newuser,user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain_new()
+			(newuser,user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain_new(ppid,pid)
 		# ... or update local user mode
 		else:
-			(user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain()
+			(user,sshpass,enapass,sshpassNew,enapassNew)=credential_chain(ppid,pid)
 			newuser=user
 		# -- hosts parsing
 		i = 0
@@ -785,6 +739,7 @@ def main():
 			ret = pool.apply_async(changepass,(host,user,newuser,sshpass,sshpassNew,enapass,enapassNew,startTime,opts.verb, opts.tacacs, opts.nocheck, opts.debug))
 			if ret.get() != 0:
 			  f_error(ret.get())
+			  err = True
 		
 	# end of change password mode
 	
@@ -795,7 +750,10 @@ def main():
 	# close host file
 	if opts.file:
 		fileclose(hosts)
-	f_hosts_end()
+	f_hosts_end(ppid,pid)
+	
+	if err:
+	  return 1
 	
 	return 0
 
@@ -814,5 +772,5 @@ if __name__ == '__main__':
     	sys.exit(1)
     except KeyboardInterrupt:
     	print "\n### keyboard interrupt : Ok, I stop"
-    	#log.write ("%sKeyboard Interrupted\n"%time(1))
+    	#log.write ("%sKeyboard Interrupted\n"%timelog(1))
     	sys.exit(1)

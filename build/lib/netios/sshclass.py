@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# coding=UTF-8
+# -*- coding: utf-8 -*-
 
 """
     Sshclass is a module to be used with Netios.
@@ -31,7 +31,7 @@
 
 import pexpect, sys, os, re, datetime
 
-def time (flag):
+def timelog (flag):
 	"""
 	Timestamp function
 	The flag determines if it returns a timestamp formatted for a log file itself or its content
@@ -43,7 +43,7 @@ def time (flag):
 	else:
 		hor=datetime.datetime.now()
 		hor=hor.strftime("%Y-%m-%dT%H%M")
-		return (hor)
+		return hor
 
 class sshConn:
 	"""
@@ -104,7 +104,7 @@ class sshConn:
 					os.mkdir('log')
 				if os.path.exists("log/%s"%self.startTime) == False:
 					os.mkdir("log/%s"%self.startTime)
-				fout = file ("log/%s/%s-%s.%d.log"%(self.startTime,self.host,time(0), self.logincount),"w")
+				fout = file ("log/%s/%s-%s.%d.log"%(self.startTime,self.host,timelog(0), self.logincount),"w")
 				self.ssh.logfile = fout
 			#print "~ SSH session n°%d"%self.logincount
 			i = self.ssh.expect (["assword:", r"yes/no"],timeout=7)
@@ -134,12 +134,12 @@ class sshConn:
 			elif i == 2:
 			# login successful
 				if verb:
-					print "[%d:%d]\t%s\tSSH Login OK."%(self.ppid,self.pid,self.host)
+					print "[%d:%d]\t%s\tSSH Login done."%(self.ppid,self.pid,self.host)
 			elif i == 3:
 			# wrong username
 				return (self.error('user'))
 			# deactivate echo
-			self.ssh.setecho("False")
+			self.ssh.setecho(False)
 			return 0
 		except pexpect.TIMEOUT:
 			return (self.error ('timeout'))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# coding=UTF-8
+# -*- coding: utf-8 -*-
 
 """
     Ciscoclass is the module containing the Cisco object for Netios
@@ -41,8 +41,9 @@ class ciscoSsh(sshConn):
 		"""
 		sshConn.__init__(self, host, user, password,startTime,logincount, debug)
 		self.enapass=enapass
-		self.prompt="\S*(\$|%|#|>){1}$"
-		self.confprompt="\(config\)\#|\(config-line\)\#"
+		self.prompt="\n\S+(\$|#|>){1}$"
+		# ^.*\(config\)\#|\(config-line\)\#
+		self.confprompt="\n\S+\(config\)\#|\(config-line\)\#"
 	
 	def ena (self):
 		"""
@@ -332,7 +333,10 @@ class ciscoSsh(sshConn):
 		"""
 		try:
 			self.ssh.sendline ("%s"%command)
-			self.ssh.expect ([self.confprompt,self.prompt])
+			# [Ii]ncomplete|[Ee]rror|[Ff]ailed|[Ii]nvalid
+			i = self.ssh.expect (['\n%',self.confprompt,self.prompt])
+			if i == 0:
+			  return 1
 			return 0
 		except pexpect.TIMEOUT:
 			self.error ('timeout')
